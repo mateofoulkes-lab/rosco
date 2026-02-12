@@ -431,7 +431,7 @@
       </div>
 
       <select id="selSaved">
-        <option value="">Listas guardadas (próximamente)</option>
+        <option value="">Cargando listas .csv...</option>
       </select>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
@@ -826,6 +826,56 @@
   function openWordsModal(){
     modalWords.classList.add("open");
     fillWordsFormFromItems(curP().items);
+    void loadSavedCsvOptions();
+  }
+
+  function setSavedListOptions(files){
+    selSaved.innerHTML="";
+
+    const placeholder=document.createElement("option");
+    placeholder.value="";
+    placeholder.textContent = files.length
+      ? "Selecciona una lista .csv"
+      : "No se encontraron archivos .csv en esta carpeta";
+    selSaved.appendChild(placeholder);
+
+    files.forEach(file=>{
+      const opt=document.createElement("option");
+      opt.value=file.href;
+      opt.textContent=file.name;
+      selSaved.appendChild(opt);
+    });
+  }
+
+  async function loadSavedCsvOptions(){
+    try{
+      const res = await fetch("./", {cache:"no-store"});
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html,"text/html");
+      const links = Array.from(doc.querySelectorAll("a[href]"));
+
+      const files = links
+        .map(link => {
+          const rawHref = link.getAttribute("href") || "";
+          try{
+            const url = new URL(rawHref, window.location.href);
+            const pathname = decodeURIComponent(url.pathname || "");
+            const name = pathname.split("/").filter(Boolean).pop() || "";
+            if(!name.toLowerCase().endsWith(".csv")) return null;
+            return { name, href: url.href };
+          }catch(_err){
+            return null;
+          }
+        })
+        .filter(Boolean)
+        .sort((a,b)=>a.name.localeCompare(b.name,"es",{sensitivity:"base"}));
+
+      setSavedListOptions(files);
+    }catch(err){
+      console.warn("No pude listar CSVs automáticamente:", err);
+      selSaved.innerHTML='<option value="">No se pudo listar .csv automáticamente</option>';
+    }
   }
 
   function parseListText(text){
@@ -870,6 +920,22 @@
     const text=await f.text();
     fillWordsFormFromItems(normalizeToRosco(parseListText(text)));
     fileImport.value="";
+  });
+
+  selSaved.addEventListener("change", async ()=>{
+    if(!selSaved.value) return;
+    try{
+      const text = await fetch(selSaved.value, {cache:"no-store"}).then(r=>{
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      });
+      fillWordsFormFromItems(normalizeToRosco(parseListText(text)));
+    }catch(err){
+      console.warn("No pude cargar la lista seleccionada:", err);
+      alert("No se pudo cargar ese CSV. Si estás usando file://, usa 'Seleccionar archivo'.");
+    }finally{
+      selSaved.value="";
+    }
   });
 
   btnExport.onclick = ()=>{
