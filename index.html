@@ -2,34 +2,335 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rosco AR (2 jugadores + Ñ + grabación)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>El Rosco App</title>
   <style>
-    body { margin:0; font-family: system-ui, Arial; background:#0f0f10; color:#eee; }
-    .wrap { display:flex; flex-direction:column; gap:10px; padding:10px; }
-    .stage { width:100%; max-width:720px; margin:auto; }
-    canvas { width:100%; height:auto; border-radius:16px; background:#000; display:block; }
-    video { display:none; }
-    .panel { max-width:720px; margin:auto; display:grid; gap:10px; }
-    .info { background:#18181b; border-radius:14px; padding:10px; display:grid; gap:6px; }
-    .row { display:flex; gap:8px; flex-wrap:wrap; }
-    button, input[type="file"]::file-selector-button {
-      padding:10px 12px; border-radius:12px; border:0; background:#2a2a2a; color:#eee; font-weight:650;
+    :root{
+      --bg0:#0b0c10;
+      --bg1:#0f1118;
+      --card: rgba(20,22,30,.72);
+      --card2: rgba(14,16,24,.78);
+      --stroke: rgba(255,255,255,.10);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.68);
+
+      --green:#23c55e;
+      --red:#ef4444;
+      --yellow:#ffcc33;
+
+      --btn: rgba(255,255,255,.08);
+      --btnHover: rgba(255,255,255,.12);
     }
-    button:disabled { opacity:0.5; }
-    textarea {
-      width:100%; min-height:90px; border-radius:12px; border:1px solid #333;
-      background:#0f0f10; color:#eee; padding:10px; box-sizing:border-box;
+
+    *{ box-sizing:border-box; }
+    html, body { height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1000px 700px at 50% 0%, #18213a 0%, var(--bg0) 55%, #07070a 100%);
+      color: var(--text);
+      overflow-x:hidden; /* (1) sin desplazamiento lateral */
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wrap{
+      width:100vw;
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 10px 10px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .stage{
+      width:100%;
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid var(--stroke);
+      background: #000;
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+
+    canvas{ display:block; width:100%; height:auto; }
+    video{ display:none; }
+
+    .card{
+      width:100%;
+      border-radius: 18px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--card) 0%, rgba(10,11,16,.72) 100%);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 26px rgba(0,0,0,.35);
+      padding: 10px;
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:nowrap;
+      width:100%;
+      min-width:0;
+    }
+
+    .left, .center, .right{ display:flex; align-items:center; gap:10px; min-width:0; }
+    .center{ justify-content:center; flex:1; }
+    .right{ justify-content:flex-end; }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-weight: 800;
+      letter-spacing: .2px;
+      max-width: 60vw;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill.small{
+      padding: 8px 10px;
+      font-weight: 750;
+      opacity: .95;
+    }
+
+    .label{
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing:.2px;
+      margin-right: 6px;
+    }
+
+    .value{
+      font-weight: 850;
+      color: var(--text);
+      letter-spacing:.2px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 58vw;
+    }
+
+    .value.mono{
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: 0;
     }
-    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .small { opacity:.85; font-size: 13px; }
-    .kv { display:grid; grid-template-columns:auto 1fr; gap:8px 10px; align-items:start; }
-    .k { opacity:.8; }
-    a { color:#7cc0ff; }
-    .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#27272a; font-size:12px; opacity:.9; }
+
+    button{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 900;
+      letter-spacing: .2px;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+      user-select:none;
+      touch-action: manipulation;
+      min-width: 0;
+    }
+    button:active{ transform: translateY(1px); }
+    button:hover{ background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.08)); }
+    button:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .btn-green{
+      background: linear-gradient(180deg, rgba(35,197,94,.95), rgba(18,140,63,.95));
+      border-color: rgba(255,255,255,.12);
+      color: #06210f;
+      text-shadow: 0 1px 0 rgba(255,255,255,.25);
+    }
+    .btn-red{
+      background: linear-gradient(180deg, rgba(239,68,68,.95), rgba(170,33,33,.95));
+      border-color: rgba(255,255,255,.12);
+      color: #2a0606;
+      text-shadow: 0 1px 0 rgba(255,255,255,.20);
+    }
+    .btn-yellow{
+      background: linear-gradient(180deg, rgba(255,204,51,.98), rgba(196,144,16,.98));
+      border-color: rgba(255,255,255,.12);
+      color: #2a1f05;
+      text-shadow: 0 1px 0 rgba(255,255,255,.20);
+    }
+
+    .btn-ghost{
+      background: rgba(255,255,255,.07);
+    }
+
+    .btn-wide{ width: 100%; }
+
+    .defBox{
+      margin-top: 10px;
+      border-radius: 16px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.22));
+      padding: 10px 12px;
+      max-height: 110px;
+      overflow:hidden;
+    }
+    .defTitle{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: .25px;
+      margin-bottom: 6px;
+    }
+    .defText{
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 750;
+      color: rgba(255,255,255,.90);
+      display:-webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow:hidden;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      align-items:center;
+      margin-top: 8px;
+    }
+    .actions button{
+      flex: 1;
+      max-width: 240px;
+    }
+
+    .subactions{
+      margin-top: 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .subactions .left, .subactions .center, .subactions .right{
+      flex:1;
+    }
+    .subactions .center{ justify-content:center; }
+    .subactions .right{ justify-content:flex-end; }
+
+    .nav{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .nav span{
+      font-weight: 950;
+      letter-spacing: .5px;
+      color: rgba(255,255,255,.88);
+    }
+
+    /* ===== Modales ===== */
+    .modal{
+      position: fixed;
+      inset: 0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 14px;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+    }
+    .modal.open{ display:flex; }
+    .modalCard{
+      width: min(780px, 100%);
+      max-height: min(86vh, 900px);
+      overflow:auto;
+      border-radius: 18px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(20,22,30,.92), rgba(10,11,16,.92));
+      box-shadow: 0 16px 50px rgba(0,0,0,.55);
+      padding: 12px;
+    }
+    .modalHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 10px;
+    }
+    .modalHeader h3{
+      margin:0;
+      font-size: 16px;
+      letter-spacing:.2px;
+    }
+
+    input[type="text"], textarea{
+      width:100%;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      padding: 12px 12px;
+      outline:none;
+      font-weight: 700;
+    }
+
+    select, input[type="file"]{
+      width:100%;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      padding: 10px 10px;
+      outline:none;
+      font-weight: 700;
+    }
+
+    .gridWords{
+      display:grid;
+      grid-template-columns: 48px 1fr 1fr;
+      gap: 8px;
+      align-items:center;
+      margin-top: 10px;
+    }
+    .gridWords .hdr{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 850;
+      letter-spacing: .25px;
+      padding: 2px 0 6px;
+    }
+    .letterCell{
+      font-weight: 950;
+      text-align:center;
+      border-radius: 12px;
+      padding: 10px 0;
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--stroke);
+    }
+
+    .modalFooter{
+      margin-top: 12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .hint{
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.25;
+      margin-top: 8px;
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="stage">
@@ -37,95 +338,152 @@
       <canvas id="out"></canvas>
     </div>
 
-    <div class="panel">
-      <div class="info">
-        <div class="row" style="justify-content:space-between; align-items:center;">
+    <!-- Card 1: Encabezado + Respuesta + Definición -->
+    <div class="card" id="cardTop">
+      <div class="row">
+        <div class="left">
+          <!-- (a) click para renombrar -->
+          <button class="pill" id="btnPlayerName" title="Cambiar nombre">
+            <span id="playerNameText">Jugador 1</span>
+          </button>
+
+          <!-- (b) cambiar jugador -->
+          <button class="pill small btn-ghost" id="btnTogglePlayer" title="Cambiar jugador">
+            ⇄ cambiar jugador
+          </button>
+        </div>
+
+        <!-- (c) RESPUESTA -->
+        <div class="right" style="min-width: 0;">
+          <div class="pill" style="max-width: 55vw;">
+            <span class="label">RESPUESTA:</span>
+            <span class="value" id="uiAnswer">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- (d) DEFINICIÓN -->
+      <div class="defBox">
+        <div class="defTitle">DEFINICIÓN</div>
+        <div class="defText" id="uiDef">—</div>
+      </div>
+    </div>
+
+    <!-- Card 2: Acciones -->
+    <div class="card">
+      <!-- (e)(f)(g) -->
+      <div class="actions">
+        <button class="btn-green" id="btnOk">✔ CORRECTO</button>
+        <button class="btn-red" id="btnBad">✖ INCORRECTO</button>
+        <button class="btn-yellow" id="btnPass">◯ PASAPALABRA</button>
+      </div>
+
+      <!-- (h)(i)(j) -->
+      <div class="subactions">
+        <div class="left">
+          <button id="btnGame" class="btn-ghost">JUEGO NUEVO</button>
+        </div>
+
+        <div class="center">
+          <button id="btnEnd" class="btn-ghost">FIN DEL JUEGO</button>
+        </div>
+
+        <div class="right">
+          <div class="nav">
+            <button id="btnPrev" class="btn-ghost" aria-label="Letra anterior">◀</button>
+            <span>LETRA</span>
+            <button id="btnNext" class="btn-ghost" aria-label="Letra siguiente">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- (k)(l) -->
+      <div class="subactions" style="margin-top: 12px;">
+        <div class="left">
+          <button id="btnWordList" class="btn-ghost">LISTA DE PALABRAS</button>
+        </div>
+
+        <div class="center"></div>
+
+        <div class="right">
+          <button id="btnDownload" class="btn-ghost" disabled>GUARDAR VIDEO</button>
+        </div>
+      </div>
+
+      <div class="hint">
+        Swipe ←/→ sobre el video también cambia de jugador. “Juego nuevo” inicia grabación. “Fin del juego” habilita Guardar video.
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Renombrar jugador -->
+  <div class="modal" id="modalName">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <h3>Cambiar nombre del jugador</h3>
+        <button id="btnCloseName" class="btn-ghost">Cerrar</button>
+      </div>
+      <input id="nameInput" type="text" placeholder="Ej: Mateo / Dani / Equipo A" />
+      <div class="modalFooter">
+        <button id="btnSaveName" class="btn-green">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Lista de palabras -->
+  <div class="modal" id="modalWords">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <h3>Lista de palabras</h3>
+        <button id="btnCloseWords" class="btn-ghost">Cerrar</button>
+      </div>
+
+      <div style="display:grid; gap:10px;">
+        <div>
+          <div class="hint" style="margin:0 0 6px;">
+            “Listas guardadas” por ahora es placeholder. Importá con archivo o editá a mano. Exportar genera CSV con letra,respuesta,definicion.
+          </div>
+          <select id="selSaved">
+            <option value="">Listas guardadas (próximamente)</option>
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
           <div>
-            <b>Control</b> <span class="badge" id="who">Jugador 1</span>
-            <div class="small">Swipe ←/→ sobre el video para cambiar de jugador.</div>
+            <input id="fileImport" type="file" accept=".csv,.tsv,.txt" />
+            <div class="hint">Abrir archivo (CSV o TSV). TSV recomendado si la definición tiene comas.</div>
           </div>
-          <div class="small" style="text-align:right;">
-            J1: <b id="t1">00:00.0</b> &nbsp;|&nbsp; J2: <b id="t2">00:00.0</b>
-          </div>
-        </div>
-
-        <div class="kv">
-          <div class="k"><b>Letra actual</b></div><div><span id="curLetter">A</span></div>
-          <div class="k"><b>Respuesta actual</b></div><div><span id="curAns">—</span></div>
-          <div class="k"><b>Definición actual</b></div><div><span id="curDef">—</span></div>
-        </div>
-      </div>
-
-      <div class="info">
-        <div class="row">
-          <button id="btnStart">Iniciar</button>
-          <button id="btnPause">Pausar</button>
-          <button id="btnPass">Pasapalabra</button>
-          <button id="btnOk">Correcto</button>
-          <button id="btnBad">Incorrecto</button>
-        </div>
-
-        <div class="row">
-          <button id="btnPrev">← Letra</button>
-          <button id="btnNext">Letra →</button>
-          <button id="btnP1">Jugador 1</button>
-          <button id="btnP2">Jugador 2</button>
-        </div>
-
-        <div class="row">
-          <button id="btnRec">Grabar</button>
-          <button id="btnStopRec" disabled>Detener</button>
-          <span class="small">Graba video + overlay + audio.</span>
-        </div>
-
-        <div id="downloadBox" style="display:none;">
-          <b>Video listo:</b> <a id="downloadLink" href="#" download="rosco.webm">Descargar</a>
-        </div>
-      </div>
-
-      <div class="grid2">
-        <div class="info">
-          <div class="row" style="justify-content:space-between; align-items:center;">
-            <b>Importar lista – Jugador 1</b>
-            <input id="file1" type="file" accept=".txt,.csv,.tsv" />
-          </div>
-          <div class="small">Formato: <b>letra,respuesta,definicion</b> o TSV. Incluye <b>Ñ</b> como letra válida.</div>
-          <textarea id="ta1" placeholder="A,ALFA,Primera letra...
-Ñ,ÑANDÚ,Ave corredora..."></textarea>
-          <div class="row">
-            <button id="btnLoad1">Cargar J1</button>
-            <button id="btnDemo1">Demo J1</button>
+          <div style="display:flex; gap:10px; align-items:flex-end;">
+            <button id="btnExport" class="btn-ghost btn-wide">Guardar lista (exportar)</button>
           </div>
         </div>
 
-        <div class="info">
-          <div class="row" style="justify-content:space-between; align-items:center;">
-            <b>Importar lista – Jugador 2</b>
-            <input id="file2" type="file" accept=".txt,.csv,.tsv" />
-          </div>
-          <div class="small">Mismo formato que J1.</div>
-          <textarea id="ta2" placeholder="A,AMOR,Sentimiento...
-Ñ,ÑOQUIS,Comida de papa..."></textarea>
-          <div class="row">
-            <button id="btnLoad2">Cargar J2</button>
-            <button id="btnDemo2">Demo J2</button>
-          </div>
+        <div class="gridWords" id="wordsGrid">
+          <div class="hdr">Letra</div>
+          <div class="hdr">Respuesta</div>
+          <div class="hdr">Definición</div>
+          <!-- filas dinámicas -->
         </div>
-      </div>
 
-      <div class="small">
-        Nota: para que grabe audio, el navegador te va a pedir permiso de micrófono.
+        <div class="modalFooter">
+          <button id="btnAssign1" class="btn-ghost">Asignar a Jugador 1</button>
+          <button id="btnAssign2" class="btn-ghost">Asignar a Jugador 2</button>
+          <button id="btnCloseWords2" class="btn-ghost">Cerrar</button>
+        </div>
       </div>
     </div>
   </div>
 
 <script>
 (() => {
-  // ====== Rosco con Ñ (27 letras) ======
+  // ===== Rosco con Ñ =====
   const ROSCO = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","Ñ","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 
+  // estados: 0 pendiente (azul), 1 pasada (amarillo), 2 correcta (verde), 3 incorrecta (rojo)
+  const STATE_COLORS = ["#2b77ff", "#ffcc33", "#23c55e", "#ef4444"];
+
   function makeDefaultItems() {
-    return ROSCO.map(l => ({ letra:l, respuesta:"", definicion:`Definición ejemplo para ${l}.` }));
+    return ROSCO.map(l => ({ letra:l, respuesta:"", definicion:"" }));
   }
 
   const players = [
@@ -133,131 +491,265 @@
     { name:"Jugador 2", items: makeDefaultItems(), idx:0, state:[], running:false, t0:0, elapsed:0 },
   ];
 
-  function resetStates(p) {
-    p.state = new Array(p.items.length).fill(0); // 0 pendiente
+  function resetStates(p){
+    p.state = new Array(p.items.length).fill(0);
     p.idx = 0;
+    p.running = false;
+    p.t0 = 0;
+    p.elapsed = 0;
   }
   resetStates(players[0]);
   resetStates(players[1]);
 
-  // estados: 0=pendiente (azul), 1=pasada (amarillo), 2=correcta (verde), 3=incorrecta (rojo)
-  const COLORS = ["#2b77ff", "#ffcc33", "#23c55e", "#ef4444"];
   let active = 0;
+  let gameStarted = false;
+  let recordingEnabled = false;
 
-  // ====== DOM ======
+  // ===== DOM =====
   const video = document.getElementById("cam");
   const canvas = document.getElementById("out");
   const ctx = canvas.getContext("2d");
 
-  const whoEl = document.getElementById("who");
-  const t1El = document.getElementById("t1");
-  const t2El = document.getElementById("t2");
+  const btnPlayerName = document.getElementById("btnPlayerName");
+  const playerNameText = document.getElementById("playerNameText");
+  const btnTogglePlayer = document.getElementById("btnTogglePlayer");
 
-  const curLetterEl = document.getElementById("curLetter");
-  const curAnsEl = document.getElementById("curAns");
-  const curDefEl = document.getElementById("curDef");
+  const uiAnswer = document.getElementById("uiAnswer");
+  const uiDef = document.getElementById("uiDef");
 
-  const btnStart = document.getElementById("btnStart");
-  const btnPause = document.getElementById("btnPause");
-  const btnPass = document.getElementById("btnPass");
   const btnOk = document.getElementById("btnOk");
   const btnBad = document.getElementById("btnBad");
+  const btnPass = document.getElementById("btnPass");
+
+  const btnGame = document.getElementById("btnGame");
+  const btnEnd = document.getElementById("btnEnd");
+
   const btnPrev = document.getElementById("btnPrev");
   const btnNext = document.getElementById("btnNext");
-  const btnP1 = document.getElementById("btnP1");
-  const btnP2 = document.getElementById("btnP2");
 
-  const btnRec = document.getElementById("btnRec");
-  const btnStopRec = document.getElementById("btnStopRec");
-  const downloadBox = document.getElementById("downloadBox");
-  const downloadLink = document.getElementById("downloadLink");
+  const btnWordList = document.getElementById("btnWordList");
+  const btnDownload = document.getElementById("btnDownload");
 
-  const ta1 = document.getElementById("ta1");
-  const ta2 = document.getElementById("ta2");
-  const file1 = document.getElementById("file1");
-  const file2 = document.getElementById("file2");
-  const btnLoad1 = document.getElementById("btnLoad1");
-  const btnLoad2 = document.getElementById("btnLoad2");
-  const btnDemo1 = document.getElementById("btnDemo1");
-  const btnDemo2 = document.getElementById("btnDemo2");
+  // Modales
+  const modalName = document.getElementById("modalName");
+  const btnCloseName = document.getElementById("btnCloseName");
+  const nameInput = document.getElementById("nameInput");
+  const btnSaveName = document.getElementById("btnSaveName");
 
-  // ====== Tiempo con décimas ======
-  function nowMs() { return performance.now(); }
-  function startTimer(p) { if (!p.running){ p.running=true; p.t0=nowMs(); } }
-  function pauseTimer(p) { if (p.running){ p.elapsed += (nowMs()-p.t0); p.running=false; } }
-  function getElapsedMs(p){ return p.running ? p.elapsed + (nowMs()-p.t0) : p.elapsed; }
+  const modalWords = document.getElementById("modalWords");
+  const btnCloseWords = document.getElementById("btnCloseWords");
+  const btnCloseWords2 = document.getElementById("btnCloseWords2");
+  const fileImport = document.getElementById("fileImport");
+  const btnExport = document.getElementById("btnExport");
+  const btnAssign1 = document.getElementById("btnAssign1");
+  const btnAssign2 = document.getElementById("btnAssign2");
+  const wordsGrid = document.getElementById("wordsGrid");
 
-  function formatMsTenths(ms) {
-    const totalTenths = Math.floor(ms / 100);
+  // ===== Helpers =====
+  function curP(){ return players[active]; }
+
+  function nowMs(){ return performance.now(); }
+  function startTimer(p){
+    if (p.running) return;
+    p.running = true;
+    p.t0 = nowMs();
+  }
+  function pauseTimer(p){
+    if (!p.running) return;
+    p.elapsed += (nowMs() - p.t0);
+    p.running = false;
+  }
+  function getElapsedMs(p){
+    return p.running ? p.elapsed + (nowMs() - p.t0) : p.elapsed;
+  }
+  function formatMsTenths(ms){
+    const totalTenths = Math.floor(ms/100);
     const tenths = totalTenths % 10;
-    const totalSeconds = Math.floor(totalTenths / 10);
+    const totalSeconds = Math.floor(totalTenths/10);
     const s = totalSeconds % 60;
-    const m = Math.floor(totalSeconds / 60);
+    const m = Math.floor(totalSeconds/60);
     return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${tenths}`;
   }
 
-  function curP() { return players[active]; }
-
-  function updateUI() {
-    whoEl.textContent = players[active].name;
-    t1El.textContent = formatMsTenths(getElapsedMs(players[0]));
-    t2El.textContent = formatMsTenths(getElapsedMs(players[1]));
-
+  function updateTopUI(){
     const p = curP();
+    playerNameText.textContent = p.name;
+
     const item = p.items[p.idx] || {letra:"?",respuesta:"",definicion:""};
-    curLetterEl.textContent = item.letra ?? "—";
-    curAnsEl.textContent = item.respuesta?.trim() ? item.respuesta : "—";
-    curDefEl.textContent = item.definicion?.trim() ? item.definicion : "—";
+    uiAnswer.textContent = item.respuesta?.trim() ? item.respuesta : "—";
+    uiDef.textContent = item.definicion?.trim() ? item.definicion : "—";
   }
 
-  // ====== Navegación ======
-  function nextUnresolved(p) {
+  function setActive(i){
+    if (i === active) return;
+    // pausa el timer del actual para que no corran los 2
+    pauseTimer(curP());
+    active = i;
+    updateTopUI();
+  }
+
+  function togglePlayer(){
+    setActive(active === 0 ? 1 : 0);
+  }
+
+  // Avance “juego”: salta resueltas (verde/rojo)
+  function nextUnresolved(p){
     const n = p.items.length;
-    for (let k=1; k<=n; k++) {
+    for (let k=1; k<=n; k++){
       const j = (p.idx + k) % n;
-      if (p.state[j] !== 2 && p.state[j] !== 3) { p.idx = j; return; }
+      if (p.state[j] !== 2 && p.state[j] !== 3){ p.idx = j; return; }
     }
   }
-  function forceNext(p) { p.idx = (p.idx + 1) % p.items.length; }
-  function forcePrev(p) { p.idx = (p.idx - 1 + p.items.length) % p.items.length; }
 
-  // ====== Acciones ======
-  btnStart.onclick = () => startTimer(curP());
-  btnPause.onclick = () => pauseTimer(curP());
+  // Manual: siempre avanza/retrocede
+  function forceNext(p){ p.idx = (p.idx + 1) % p.items.length; }
+  function forcePrev(p){ p.idx = (p.idx - 1 + p.items.length) % p.items.length; }
 
-  btnPass.onclick = () => {
+  // ===== Grabación (single video) =====
+  let recorder = null;
+  let chunks = [];
+  let downloadURL = null;
+
+  function pickMimeType(){
+    const candidates = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm"
+    ];
+    return candidates.find(t => MediaRecorder.isTypeSupported(t)) || "";
+  }
+
+  function startRecording(){
+    if (recorder && recorder.state !== "inactive") return;
+
+    btnDownload.disabled = true;
+    if (downloadURL){ URL.revokeObjectURL(downloadURL); downloadURL = null; }
+
+    const stream = canvas.captureStream(30);
+
+    // audio del mic si existe
+    const camStream = video.srcObject;
+    if (camStream){
+      camStream.getAudioTracks().forEach(t => stream.addTrack(t));
+    }
+
+    const mimeType = pickMimeType();
+    recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    chunks = [];
+
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+      downloadURL = URL.createObjectURL(blob);
+      recordingEnabled = true;
+      btnDownload.disabled = false;
+      // guardamos link en el botón
+      btnDownload.onclick = () => {
+        const a = document.createElement("a");
+        a.href = downloadURL;
+        a.download = `rosco_${new Date().toISOString().replaceAll(":","-")}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      };
+    };
+
+    recorder.start(500);
+  }
+
+  function stopRecording(){
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+  }
+
+  // ===== Estado del botón (h) =====
+  function updateGameButtonLabel(){
+    if (!gameStarted){
+      btnGame.textContent = "JUEGO NUEVO";
+      return;
+    }
     const p = curP();
-    if (p.state[p.idx] === 0) p.state[p.idx] = 1;
-    pauseTimer(p);
-    nextUnresolved(p);
-    updateUI();
-  };
+    btnGame.textContent = p.running ? "PAUSAR" : "REANUDAR";
+  }
+
+  function newGame(){
+    // reset total
+    resetStates(players[0]);
+    resetStates(players[1]);
+    gameStarted = true;
+    recordingEnabled = false;
+    btnDownload.disabled = true;
+
+    // arranca J1 por defecto
+    active = 0;
+
+    // arranca timer y grabación automáticamente
+    startTimer(curP());
+    startRecording();
+
+    updateTopUI();
+    updateGameButtonLabel();
+  }
+
+  function togglePausePlay(){
+    if (!gameStarted){
+      newGame();
+      return;
+    }
+    const p = curP();
+    if (p.running) pauseTimer(p);
+    else startTimer(p);
+    updateGameButtonLabel();
+  }
+
+  function endGame(){
+    if (!gameStarted) return;
+
+    // pausa ambos
+    pauseTimer(players[0]);
+    pauseTimer(players[1]);
+
+    // detiene grabación y habilita descargar al terminar
+    stopRecording();
+
+    // “juego terminado”
+    gameStarted = false;
+    updateGameButtonLabel();
+  }
+
+  // ===== Acciones (e)(f)(g) =====
   btnOk.onclick = () => {
     const p = curP();
     p.state[p.idx] = 2;
     nextUnresolved(p);
-    updateUI();
+    updateTopUI();
   };
+
   btnBad.onclick = () => {
     const p = curP();
     p.state[p.idx] = 3;
     nextUnresolved(p);
-    updateUI();
+    updateTopUI();
   };
 
-  btnNext.onclick = () => { forceNext(curP()); updateUI(); };
-  btnPrev.onclick = () => { forcePrev(curP()); updateUI(); };
+  btnPass.onclick = () => {
+    const p = curP();
+    if (p.state[p.idx] === 0) p.state[p.idx] = 1;
+    pauseTimer(p); // pasapalabra pausa
+    nextUnresolved(p);
+    updateTopUI();
+    updateGameButtonLabel();
+  };
 
-  function setActive(i) {
-    if (i === active) return;
-    pauseTimer(curP());
-    active = i;
-    updateUI();
-  }
-  btnP1.onclick = () => setActive(0);
-  btnP2.onclick = () => setActive(1);
+  // ===== Botones (h)(i)(j)(b) =====
+  btnGame.onclick = () => togglePausePlay();
+  btnEnd.onclick = () => endGame();
 
-  // Swipe en canvas
+  btnPrev.onclick = () => { forcePrev(curP()); updateTopUI(); };
+  btnNext.onclick = () => { forceNext(curP()); updateTopUI(); };
+
+  btnTogglePlayer.onclick = () => { togglePlayer(); updateTopUI(); updateGameButtonLabel(); };
+
+  // Swipe en canvas para cambiar de jugador
   let touchX0 = null;
   canvas.addEventListener("touchstart", (e) => {
     if (!e.touches?.length) return;
@@ -266,146 +758,151 @@
 
   canvas.addEventListener("touchend", (e) => {
     if (touchX0 === null) return;
-    const x1 = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : null;
-    if (x1 === null) { touchX0 = null; return; }
+    const x1 = e.changedTouches?.[0]?.clientX;
+    if (x1 == null){ touchX0 = null; return; }
     const dx = x1 - touchX0;
     touchX0 = null;
     if (Math.abs(dx) < 50) return;
-    if (dx < 0) setActive(1); else setActive(0);
+    togglePlayer();
+    updateTopUI();
+    updateGameButtonLabel();
   }, { passive:true });
 
-  // ====== Cámara ======
-  async function initCam() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } },
-      audio: true
+  // ===== Modal nombre (a) =====
+  btnPlayerName.onclick = () => {
+    nameInput.value = curP().name;
+    modalName.classList.add("open");
+    setTimeout(() => nameInput.focus(), 50);
+  };
+  btnCloseName.onclick = () => modalName.classList.remove("open");
+  btnSaveName.onclick = () => {
+    const val = (nameInput.value || "").trim();
+    if (val) curP().name = val;
+    modalName.classList.remove("open");
+    updateTopUI();
+  };
+  modalName.addEventListener("click", (e) => {
+    if (e.target === modalName) modalName.classList.remove("open");
+  });
+
+  // ===== Modal lista (k) =====
+  btnWordList.onclick = () => {
+    openWordsModal();
+  };
+  btnCloseWords.onclick = () => modalWords.classList.remove("open");
+  btnCloseWords2.onclick = () => modalWords.classList.remove("open");
+  modalWords.addEventListener("click", (e) => {
+    if (e.target === modalWords) modalWords.classList.remove("open");
+  });
+
+  function openWordsModal(){
+    modalWords.classList.add("open");
+    // por defecto: cargamos el contenido del jugador activo para editar
+    fillWordsFormFromItems(curP().items);
+  }
+
+  function clearWordGridRows(){
+    // borra filas dinámicas (dejando headers)
+    const kids = Array.from(wordsGrid.children);
+    // headers son los 3 primeros
+    kids.slice(3).forEach(el => el.remove());
+  }
+
+  function fillWordsFormFromItems(items){
+    clearWordGridRows();
+
+    const map = new Map(items.map(it => [it.letra, it]));
+    for (const L of ROSCO){
+      const it = map.get(L) || { letra:L, respuesta:"", definicion:"" };
+
+      const cL = document.createElement("div");
+      cL.className = "letterCell";
+      cL.textContent = L;
+
+      const inResp = document.createElement("input");
+      inResp.type = "text";
+      inResp.value = it.respuesta || "";
+      inResp.dataset.letter = L;
+      inResp.dataset.kind = "respuesta";
+
+      const inDef = document.createElement("input");
+      inDef.type = "text";
+      inDef.value = it.definicion || "";
+      inDef.dataset.letter = L;
+      inDef.dataset.kind = "definicion";
+
+      wordsGrid.appendChild(cL);
+      wordsGrid.appendChild(inResp);
+      wordsGrid.appendChild(inDef);
+    }
+  }
+
+  function readWordsFormToItems(){
+    // lee inputs del grid
+    const inputs = wordsGrid.querySelectorAll("input[data-letter]");
+    const map = new Map();
+    for (const L of ROSCO){
+      map.set(L, { letra:L, respuesta:"", definicion:"" });
+    }
+    inputs.forEach(inp => {
+      const L = inp.dataset.letter;
+      const kind = inp.dataset.kind;
+      const it = map.get(L);
+      if (!it) return;
+      it[kind] = inp.value || "";
     });
-    video.srcObject = stream;
-    await video.play();
-    resizeCanvasToVideo();
-    requestAnimationFrame(drawLoop);
+    return ROSCO.map(L => map.get(L));
   }
 
-  function resizeCanvasToVideo() {
-    const w = video.videoWidth || 1280;
-    const h = video.videoHeight || 720;
-    canvas.width = w;
-    canvas.height = h;
-  }
+  // Importar archivo en modal
+  fileImport.addEventListener("change", async () => {
+    const f = fileImport.files?.[0];
+    if (!f) return;
+    const text = await f.text();
+    const raw = parseListText(text);
+    const normalized = normalizeToRosco(raw);
+    fillWordsFormFromItems(normalized);
+    fileImport.value = "";
+  });
 
-  // ====== Dibujo ======
-  function roundRect(ctx, x, y, w, h, r) {
-    const rr = Math.min(r, w/2, h/2);
-    ctx.beginPath();
-    ctx.moveTo(x+rr, y);
-    ctx.arcTo(x+w, y, x+w, y+h, rr);
-    ctx.arcTo(x+w, y+h, x, y+h, rr);
-    ctx.arcTo(x, y+h, x, y, rr);
-    ctx.arcTo(x, y, x+w, y, rr);
-    ctx.closePath();
-  }
+  // Exportar (guardar lista)
+  btnExport.onclick = () => {
+    const items = readWordsFormToItems();
+    const csv = itemsToCSV(items);
+    const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lista_rosco_${new Date().toISOString().slice(0,19).replaceAll(":","-")}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  };
 
-  function drawRosco(p) {
-    const n = p.items.length;
-    const cx = canvas.width * 0.5;
-    const cy = canvas.height * 0.45;
-    const ringR = Math.min(canvas.width, canvas.height) * 0.34;
-    const bubbleR = Math.max(14, Math.min(canvas.width, canvas.height) * 0.028);
-    const angle0 = -Math.PI / 2;
+  btnAssign1.onclick = () => {
+    players[0].items = readWordsFormToItems();
+    // mantenemos estado/idx, pero si querés reset automático lo hacemos.
+    // para no romper “funcionamiento”, no reseteo.
+    updateTopUI();
+    modalWords.classList.remove("open");
+  };
 
-    for (let i=0; i<n; i++) {
-      const a = angle0 + i * (2*Math.PI/n);
-      const x = cx + Math.cos(a) * ringR;
-      const y = cy + Math.sin(a) * ringR;
+  btnAssign2.onclick = () => {
+    players[1].items = readWordsFormToItems();
+    updateTopUI();
+    modalWords.classList.remove("open");
+  };
 
-      ctx.beginPath();
-      ctx.arc(x, y, bubbleR, 0, 2*Math.PI);
-      ctx.fillStyle = COLORS[p.state[i] ?? 0];
-      ctx.globalAlpha = (i === p.idx) ? 1.0 : 0.85;
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-
-      if (i === p.idx) {
-        ctx.lineWidth = Math.max(3, bubbleR * 0.22);
-        ctx.strokeStyle = "white";
-        ctx.stroke();
-      }
-
-      const letter = (p.items[i].letra ?? "?").toString();
-      ctx.fillStyle = "#0b0b0c";
-      ctx.font = `900 ${Math.floor(bubbleR*1.15)}px system-ui, Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(letter, x, y);
-    }
-  }
-
-  function drawTopBadges(p) {
-    const pad = Math.round(canvas.width * 0.02);
-
-    // título jugador
-    const title = p.name;
-    ctx.font = `900 ${Math.floor(canvas.height*0.04)}px system-ui, Arial`;
-    const tw = ctx.measureText(title).width;
-    const bx = pad, by = pad;
-    const bw = tw + pad*2, bh = Math.floor(canvas.height*0.07);
-
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    roundRect(ctx, bx, by, bw, bh, 16); ctx.fill();
-    ctx.fillStyle = "white";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(title, bx + pad, by + bh/2);
-
-    // letra actual en esquina
-    const letter = (p.items[p.idx]?.letra ?? "?").toString();
-    const lw = Math.floor(canvas.height*0.10);
-    const lh = lw;
-    const lx = canvas.width - pad - lw;
-    const ly = pad;
-
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    roundRect(ctx, lx, ly, lw, lh, 18); ctx.fill();
-    ctx.fillStyle = "white";
-    ctx.font = `950 ${Math.floor(canvas.height*0.06)}px system-ui, Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(letter, lx + lw/2, ly + lh/2);
-
-    // timer con décimas
-    const timeText = formatMsTenths(getElapsedMs(p));
-    ctx.font = `800 ${Math.floor(canvas.height*0.034)}px system-ui, Arial`;
-    const tw2 = ctx.measureText(timeText).width;
-    const bx2 = pad, by2 = by + bh + Math.round(pad*0.7);
-    const bw2 = tw2 + pad*2, bh2 = Math.floor(canvas.height*0.06);
-
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    roundRect(ctx, bx2, by2, bw2, bh2, 16); ctx.fill();
-    ctx.fillStyle = "white";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(timeText, bx2 + pad, by2 + bh2/2);
-  }
-
-  function drawLoop() {
-    if (video.readyState >= 2) {
-      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) resizeCanvasToVideo();
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const p = curP();
-      drawRosco(p);
-      drawTopBadges(p);
-      updateUI();
-    }
-    requestAnimationFrame(drawLoop);
-  }
-
-  // ====== Importación con normalización a ROSCO (Ñ incluida) ======
-  function parseListText(text) {
+  // ===== Parse / normalize (CSV o TSV) =====
+  function parseListText(text){
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const raw = [];
 
-    for (const line of lines) {
+    for (const line of lines){
+      // salteamos header típico
+      if (/^letra\s*,\s*respuesta\s*,\s*definicion/i.test(line)) continue;
+
       let parts;
       if (line.includes("\t")) parts = line.split("\t");
       else parts = line.split(",");
@@ -419,105 +916,244 @@
     return raw;
   }
 
-  function normalizeToRosco(rawItems) {
-    // Mapeamos por letra (A..Z y Ñ). Si hay repetidas, la última gana.
+  function normalizeToRosco(rawItems){
     const map = new Map();
-    for (const it of rawItems) {
-      const L = it.letra;
+    for (const it of rawItems){
+      const L = (it.letra || "").toUpperCase();
       if (!ROSCO.includes(L)) continue;
       map.set(L, { letra:L, respuesta: it.respuesta ?? "", definicion: it.definicion ?? "" });
     }
-    // Construimos exactamente 27 entradas, en el orden del rosco
     return ROSCO.map(L => map.get(L) ?? { letra:L, respuesta:"", definicion:"" });
   }
 
-  function loadPlayerFromText(pi, text) {
-    const raw = parseListText(text);
-    if (!raw.length) { alert("No pude leer la lista. Revisá el formato."); return; }
-    players[pi].items = normalizeToRosco(raw);
-    resetStates(players[pi]);
-    updateUI();
-  }
-
-  btnLoad1.onclick = () => loadPlayerFromText(0, ta1.value);
-  btnLoad2.onclick = () => loadPlayerFromText(1, ta2.value);
-
-  btnDemo1.onclick = () => {
-    ta1.value = [
-      "A,ALFA,Primera letra del alfabeto griego",
-      "B,BETA,Segunda letra del alfabeto griego",
-      "N,NU,Letra griega (ν)",
-      "Ñ,ÑANDÚ,Ave corredora sudamericana",
-      "Z,ZETA,Letra griega (ζ)"
-    ].join("\n");
-  };
-  btnDemo2.onclick = () => {
-    ta2.value = [
-      "A,AMOR,Sentimiento que no suele aparecer en planillas de Excel",
-      "C,CAFÉ,Combustible moral del trabajador moderno",
-      "Ñ,ÑOQUIS,Comida a base de papa (plural popular)",
-      "S,SIESTA,Deporte nacional no oficial",
-      "Z,ZAPALLO,Ingrediente versátil"
-    ].join("\n");
-  };
-
-  async function readFileIntoTextarea(fileInput, textarea) {
-    const f = fileInput.files?.[0];
-    if (!f) return;
-    const text = await f.text();
-    textarea.value = text;
-  }
-  file1.addEventListener("change", () => readFileIntoTextarea(file1, ta1));
-  file2.addEventListener("change", () => readFileIntoTextarea(file2, ta2));
-
-  // ====== Grabación (single video) ======
-  let recorder = null;
-  let chunks = [];
-  let downloadURL = null;
-
-  function pickMimeType() {
-    const candidates = [
-      "video/webm;codecs=vp9,opus",
-      "video/webm;codecs=vp8,opus",
-      "video/webm"
-    ];
-    return candidates.find(t => MediaRecorder.isTypeSupported(t)) || "";
-  }
-
-  btnRec.onclick = () => {
-    downloadBox.style.display = "none";
-    if (downloadURL) { URL.revokeObjectURL(downloadURL); downloadURL = null; }
-
-    const stream = canvas.captureStream(30);
-    const camStream = video.srcObject;
-    if (camStream) camStream.getAudioTracks().forEach(t => stream.addTrack(t));
-
-    const mimeType = pickMimeType();
-    recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-
-    chunks = [];
-    recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
-    recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
-      downloadURL = URL.createObjectURL(blob);
-      downloadLink.href = downloadURL;
-      downloadLink.download = `rosco_${new Date().toISOString().replaceAll(":","-")}.webm`;
-      downloadBox.style.display = "block";
-      btnStopRec.disabled = true;
-      btnRec.disabled = false;
+  function itemsToCSV(items){
+    const esc = (s) => {
+      const v = (s ?? "").toString();
+      // CSV simple: si tiene comas o comillas, la escapamos
+      if (/[",\n]/.test(v)) return `"${v.replaceAll('"','""')}"`;
+      return v;
     };
+    const lines = [];
+    lines.push("letra,respuesta,definicion");
+    items.forEach(it => {
+      lines.push([esc(it.letra), esc(it.respuesta), esc(it.definicion)].join(","));
+    });
+    return lines.join("\n");
+  }
 
-    recorder.start(500);
-    btnRec.disabled = true;
-    btnStopRec.disabled = false;
-  };
+  // ===== Cámara =====
+  async function initCam(){
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: true
+    });
+    video.srcObject = stream;
+    await video.play();
+    resizeCanvasToVideo();
+    requestAnimationFrame(drawLoop);
+  }
 
-  btnStopRec.onclick = () => {
-    if (recorder && recorder.state !== "inactive") recorder.stop();
-  };
+  function resizeCanvasToVideo(){
+    const w = video.videoWidth || 1280;
+    const h = video.videoHeight || 720;
+    canvas.width = w;
+    canvas.height = h;
+  }
 
-  // ====== Init ======
-  updateUI();
+  // ===== Logo (2) =====
+  const logoImg = new Image();
+  let logoReady = false;
+  logoImg.onload = () => { logoReady = true; };
+  logoImg.onerror = () => { logoReady = false; };
+  // poné logo.png junto al index.html en GitHub Pages
+  logoImg.src = "logo.png";
+
+  // ===== Dibujo: burbujas con degradado + rosco un poco más grande =====
+  function roundRect(ctx, x, y, w, h, r){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr, y);
+    ctx.arcTo(x+w, y, x+w, y+h, rr);
+    ctx.arcTo(x+w, y+h, x, y+h, rr);
+    ctx.arcTo(x, y+h, x, y, rr);
+    ctx.arcTo(x, y, x+w, y, rr);
+    ctx.closePath();
+  }
+
+  function shadeColor(hex, amt){
+    // hex "#rrggbb", amt -255..255
+    const c = hex.replace("#","");
+    const r = Math.max(0, Math.min(255, parseInt(c.substring(0,2),16) + amt));
+    const g = Math.max(0, Math.min(255, parseInt(c.substring(2,4),16) + amt));
+    const b = Math.max(0, Math.min(255, parseInt(c.substring(4,6),16) + amt));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function bubbleGradient(x,y,r,base){
+    const g = ctx.createRadialGradient(x - r*0.35, y - r*0.35, r*0.2, x, y, r);
+    g.addColorStop(0, shadeColor(base, +70));
+    g.addColorStop(0.55, base);
+    g.addColorStop(1, shadeColor(base, -85));
+    return g;
+  }
+
+  function drawRosco(p){
+    const n = p.items.length;
+    const cx = canvas.width * 0.5;
+    const cy = canvas.height * 0.46;
+    const ringR = Math.min(canvas.width, canvas.height) * 0.365; // un poco más grande
+    const bubbleR = Math.max(14, Math.min(canvas.width, canvas.height) * 0.030);
+    const angle0 = -Math.PI/2;
+
+    // sombra suave del anillo
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = "rgba(255,255,255,.25)";
+    ctx.lineWidth = bubbleR * 0.25;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+
+    for (let i=0; i<n; i++){
+      const a = angle0 + i*(2*Math.PI/n);
+      const x = cx + Math.cos(a)*ringR;
+      const y = cy + Math.sin(a)*ringR;
+
+      const base = STATE_COLORS[p.state[i] ?? 0];
+
+      // burbuja
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,.55)";
+      ctx.shadowBlur = bubbleR * 0.55;
+      ctx.shadowOffsetY = bubbleR * 0.12;
+
+      ctx.beginPath();
+      ctx.arc(x, y, bubbleR, 0, Math.PI*2);
+      ctx.fillStyle = bubbleGradient(x,y,bubbleR,base);
+      ctx.globalAlpha = (i === p.idx) ? 1.0 : 0.92;
+      ctx.fill();
+
+      // borde
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = (i === p.idx) ? Math.max(3, bubbleR*0.22) : Math.max(1.5, bubbleR*0.10);
+      ctx.strokeStyle = (i === p.idx) ? "rgba(255,255,255,.92)" : "rgba(255,255,255,.28)";
+      ctx.stroke();
+
+      // brillo
+      ctx.globalAlpha = 0.35;
+      ctx.beginPath();
+      ctx.arc(x - bubbleR*0.30, y - bubbleR*0.30, bubbleR*0.35, 0, Math.PI*2);
+      ctx.fillStyle = "white";
+      ctx.fill();
+      ctx.restore();
+
+      // letra
+      const letter = (p.items[i].letra ?? "?").toString();
+      ctx.fillStyle = "rgba(10,12,18,.95)";
+      ctx.font = `950 ${Math.floor(bubbleR*1.12)}px system-ui, Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(letter, x, y+1);
+    }
+  }
+
+  function drawBadges(p){
+    const pad = Math.round(canvas.width * 0.02);
+
+    // jugador arriba izq
+    const title = p.name;
+    ctx.font = `900 ${Math.floor(canvas.height*0.038)}px system-ui, Arial`;
+    const tw = ctx.measureText(title).width;
+    const bw = tw + pad*2;
+    const bh = Math.floor(canvas.height*0.07);
+    const bx = pad, by = pad;
+
+    ctx.fillStyle = "rgba(0,0,0,0.52)";
+    roundRect(ctx, bx, by, bw, bh, 16); ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(title, bx + pad, by + bh/2);
+
+    // timer debajo
+    const t = formatMsTenths(getElapsedMs(p));
+    ctx.font = `850 ${Math.floor(canvas.height*0.032)}px ui-monospace, Menlo, monospace`;
+    const tw2 = ctx.measureText(t).width;
+    const bw2 = tw2 + pad*2;
+    const bh2 = Math.floor(canvas.height*0.06);
+    const by2 = by + bh + Math.round(pad*0.7);
+
+    ctx.fillStyle = "rgba(0,0,0,0.52)";
+    roundRect(ctx, bx, by2, bw2, bh2, 16); ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.fillText(t, bx + pad, by2 + bh2/2);
+
+    // letra actual arriba der
+    const L = (p.items[p.idx]?.letra ?? "?").toString();
+    const lw = Math.floor(canvas.height*0.10);
+    const lh = lw;
+    const lx = canvas.width - pad - lw;
+    const ly = pad;
+
+    ctx.fillStyle = "rgba(0,0,0,0.52)";
+    roundRect(ctx, lx, ly, lw, lh, 18); ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.font = `950 ${Math.floor(canvas.height*0.058)}px system-ui, Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(L, lx + lw/2, ly + lh/2);
+
+    // (2) Logo abajo derecha
+    if (logoReady){
+      const size = Math.floor(canvas.height * 0.16);
+      const margin = Math.floor(canvas.width * 0.02);
+      const x = canvas.width - margin - size;
+      const y = canvas.height - margin - size;
+
+      ctx.save();
+      ctx.globalAlpha = 0.98;
+      ctx.shadowColor = "rgba(0,0,0,.55)";
+      ctx.shadowBlur = size * 0.18;
+      ctx.drawImage(logoImg, x, y, size, size);
+      ctx.restore();
+    }
+  }
+
+  function drawVignette(){
+    const g = ctx.createRadialGradient(
+      canvas.width*0.5, canvas.height*0.35, Math.min(canvas.width, canvas.height)*0.15,
+      canvas.width*0.5, canvas.height*0.5, Math.max(canvas.width, canvas.height)*0.75
+    );
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.33)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  function drawLoop(){
+    if (video.readyState >= 2){
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) resizeCanvasToVideo();
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // overlay
+      const p = curP();
+      drawRosco(p);
+      drawBadges(p);
+      drawVignette();
+
+      // UI externa
+      updateTopUI();
+      updateGameButtonLabel();
+    }
+    requestAnimationFrame(drawLoop);
+  }
+
+  // ===== UI events init =====
+  updateTopUI();
+  updateGameButtonLabel();
+
+  // ===== Cámara init =====
   initCam().catch(err => {
     alert("No pude acceder a cámara/mic. Recordá: HTTPS o localhost.\n\n" + err);
     console.error(err);
