@@ -3,19 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rosco AR (MVP)</title>
+  <title>Rosco AR (2 jugadores + Ñ + grabación)</title>
   <style>
-    body { margin:0; font-family: system-ui, Arial; background:#111; color:#eee; }
+    body { margin:0; font-family: system-ui, Arial; background:#0f0f10; color:#eee; }
     .wrap { display:flex; flex-direction:column; gap:10px; padding:10px; }
-    .stage { position:relative; width:100%; max-width:720px; margin:auto; }
-    video, canvas { width:100%; height:auto; border-radius:14px; background:#000; }
-    .panel { max-width:720px; margin:auto; display:grid; gap:8px; }
+    .stage { width:100%; max-width:720px; margin:auto; }
+    canvas { width:100%; height:auto; border-radius:16px; background:#000; display:block; }
+    video { display:none; }
+    .panel { max-width:720px; margin:auto; display:grid; gap:10px; }
+    .info { background:#18181b; border-radius:14px; padding:10px; display:grid; gap:6px; }
     .row { display:flex; gap:8px; flex-wrap:wrap; }
-    button { padding:10px 12px; border-radius:12px; border:0; background:#2a2a2a; color:#eee; font-weight:600; }
+    button, input[type="file"]::file-selector-button {
+      padding:10px 12px; border-radius:12px; border:0; background:#2a2a2a; color:#eee; font-weight:650;
+    }
     button:disabled { opacity:0.5; }
-    .info { background:#1b1b1b; border-radius:12px; padding:10px; }
-    .download a { color:#7cc0ff; word-break:break-all; }
-    .small { opacity:.85; font-size: 14px; }
+    textarea {
+      width:100%; min-height:90px; border-radius:12px; border:1px solid #333;
+      background:#0f0f10; color:#eee; padding:10px; box-sizing:border-box;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .small { opacity:.85; font-size: 13px; }
+    .kv { display:grid; grid-template-columns:auto 1fr; gap:8px 10px; align-items:start; }
+    .k { opacity:.8; }
+    a { color:#7cc0ff; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#27272a; font-size:12px; opacity:.9; }
   </style>
 </head>
 <body>
@@ -27,55 +39,122 @@
 
     <div class="panel">
       <div class="info">
-        <div><b>Letra actual:</b> <span id="curLetter">A</span></div>
-        <div><b>Definición:</b> <span id="curDef">Ejemplo de definición para A.</span></div>
-        <div class="small">Tip: El overlay se dibuja en el canvas. El video grabado sale del canvas (incluye el rosco).</div>
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <div>
+            <b>Control</b> <span class="badge" id="who">Jugador 1</span>
+            <div class="small">Swipe ←/→ sobre el video para cambiar de jugador.</div>
+          </div>
+          <div class="small" style="text-align:right;">
+            J1: <b id="t1">00:00.0</b> &nbsp;|&nbsp; J2: <b id="t2">00:00.0</b>
+          </div>
+        </div>
+
+        <div class="kv">
+          <div class="k"><b>Letra actual</b></div><div><span id="curLetter">A</span></div>
+          <div class="k"><b>Respuesta actual</b></div><div><span id="curAns">—</span></div>
+          <div class="k"><b>Definición actual</b></div><div><span id="curDef">—</span></div>
+        </div>
       </div>
 
-      <div class="row">
-        <button id="btnStart">Iniciar</button>
-        <button id="btnPause">Pausar</button>
-        <button id="btnPass">Pasapalabra</button>
-        <button id="btnOk">Correcto</button>
-        <button id="btnBad">Incorrecto</button>
+      <div class="info">
+        <div class="row">
+          <button id="btnStart">Iniciar</button>
+          <button id="btnPause">Pausar</button>
+          <button id="btnPass">Pasapalabra</button>
+          <button id="btnOk">Correcto</button>
+          <button id="btnBad">Incorrecto</button>
+        </div>
+
+        <div class="row">
+          <button id="btnPrev">← Letra</button>
+          <button id="btnNext">Letra →</button>
+          <button id="btnP1">Jugador 1</button>
+          <button id="btnP2">Jugador 2</button>
+        </div>
+
+        <div class="row">
+          <button id="btnRec">Grabar</button>
+          <button id="btnStopRec" disabled>Detener</button>
+          <span class="small">Graba video + overlay + audio.</span>
+        </div>
+
+        <div id="downloadBox" style="display:none;">
+          <b>Video listo:</b> <a id="downloadLink" href="#" download="rosco.webm">Descargar</a>
+        </div>
       </div>
 
-      <div class="row">
-        <button id="btnRec">Grabar</button>
-        <button id="btnStopRec" disabled>Detener</button>
+      <div class="grid2">
+        <div class="info">
+          <div class="row" style="justify-content:space-between; align-items:center;">
+            <b>Importar lista – Jugador 1</b>
+            <input id="file1" type="file" accept=".txt,.csv,.tsv" />
+          </div>
+          <div class="small">Formato: <b>letra,respuesta,definicion</b> o TSV. Incluye <b>Ñ</b> como letra válida.</div>
+          <textarea id="ta1" placeholder="A,ALFA,Primera letra...
+Ñ,ÑANDÚ,Ave corredora..."></textarea>
+          <div class="row">
+            <button id="btnLoad1">Cargar J1</button>
+            <button id="btnDemo1">Demo J1</button>
+          </div>
+        </div>
+
+        <div class="info">
+          <div class="row" style="justify-content:space-between; align-items:center;">
+            <b>Importar lista – Jugador 2</b>
+            <input id="file2" type="file" accept=".txt,.csv,.tsv" />
+          </div>
+          <div class="small">Mismo formato que J1.</div>
+          <textarea id="ta2" placeholder="A,AMOR,Sentimiento...
+Ñ,ÑOQUIS,Comida de papa..."></textarea>
+          <div class="row">
+            <button id="btnLoad2">Cargar J2</button>
+            <button id="btnDemo2">Demo J2</button>
+          </div>
+        </div>
       </div>
 
-      <div class="info download" id="downloadBox" style="display:none;">
-        <div><b>Video listo:</b></div>
-        <a id="downloadLink" href="#" download="rosco.webm">Descargar</a>
+      <div class="small">
+        Nota: para que grabe audio, el navegador te va a pedir permiso de micrófono.
       </div>
     </div>
   </div>
 
 <script>
 (() => {
-  // ====== Config ======
-  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""); // MVP sin Ñ
+  // ====== Rosco con Ñ (27 letras) ======
+  const ROSCO = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","Ñ","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+
+  function makeDefaultItems() {
+    return ROSCO.map(l => ({ letra:l, respuesta:"", definicion:`Definición ejemplo para ${l}.` }));
+  }
+
+  const players = [
+    { name:"Jugador 1", items: makeDefaultItems(), idx:0, state:[], running:false, t0:0, elapsed:0 },
+    { name:"Jugador 2", items: makeDefaultItems(), idx:0, state:[], running:false, t0:0, elapsed:0 },
+  ];
+
+  function resetStates(p) {
+    p.state = new Array(p.items.length).fill(0); // 0 pendiente
+    p.idx = 0;
+  }
+  resetStates(players[0]);
+  resetStates(players[1]);
+
   // estados: 0=pendiente (azul), 1=pasada (amarillo), 2=correcta (verde), 3=incorrecta (rojo)
   const COLORS = ["#2b77ff", "#ffcc33", "#23c55e", "#ef4444"];
-
-  // Ejemplo de definiciones (reemplazá por tu lista)
-  const defs = LETTERS.map(l => ({ letra: l, respuesta: "", definicion: `Ejemplo de definición para ${l}.` }));
-
-  let idx = 0;
-  const state = new Array(LETTERS.length).fill(0);
-
-  // Cronómetro simple (local)
-  let running = false;
-  let t0 = 0;
-  let elapsed = 0; // ms acumulados
+  let active = 0;
 
   // ====== DOM ======
   const video = document.getElementById("cam");
   const canvas = document.getElementById("out");
   const ctx = canvas.getContext("2d");
 
+  const whoEl = document.getElementById("who");
+  const t1El = document.getElementById("t1");
+  const t2El = document.getElementById("t2");
+
   const curLetterEl = document.getElementById("curLetter");
+  const curAnsEl = document.getElementById("curAns");
   const curDefEl = document.getElementById("curDef");
 
   const btnStart = document.getElementById("btnStart");
@@ -83,77 +162,123 @@
   const btnPass = document.getElementById("btnPass");
   const btnOk = document.getElementById("btnOk");
   const btnBad = document.getElementById("btnBad");
+  const btnPrev = document.getElementById("btnPrev");
+  const btnNext = document.getElementById("btnNext");
+  const btnP1 = document.getElementById("btnP1");
+  const btnP2 = document.getElementById("btnP2");
 
   const btnRec = document.getElementById("btnRec");
   const btnStopRec = document.getElementById("btnStopRec");
-
   const downloadBox = document.getElementById("downloadBox");
   const downloadLink = document.getElementById("downloadLink");
 
-  // ====== Helpers ======
-  function updateUI() {
-    curLetterEl.textContent = defs[idx].letra;
-    curDefEl.textContent = defs[idx].definicion;
-  }
+  const ta1 = document.getElementById("ta1");
+  const ta2 = document.getElementById("ta2");
+  const file1 = document.getElementById("file1");
+  const file2 = document.getElementById("file2");
+  const btnLoad1 = document.getElementById("btnLoad1");
+  const btnLoad2 = document.getElementById("btnLoad2");
+  const btnDemo1 = document.getElementById("btnDemo1");
+  const btnDemo2 = document.getElementById("btnDemo2");
 
+  // ====== Tiempo con décimas ======
   function nowMs() { return performance.now(); }
+  function startTimer(p) { if (!p.running){ p.running=true; p.t0=nowMs(); } }
+  function pauseTimer(p) { if (p.running){ p.elapsed += (nowMs()-p.t0); p.running=false; } }
+  function getElapsedMs(p){ return p.running ? p.elapsed + (nowMs()-p.t0) : p.elapsed; }
 
-  function startTimer() {
-    if (running) return;
-    running = true;
-    t0 = nowMs();
+  function formatMsTenths(ms) {
+    const totalTenths = Math.floor(ms / 100);
+    const tenths = totalTenths % 10;
+    const totalSeconds = Math.floor(totalTenths / 10);
+    const s = totalSeconds % 60;
+    const m = Math.floor(totalSeconds / 60);
+    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${tenths}`;
   }
 
-  function pauseTimer() {
-    if (!running) return;
-    elapsed += (nowMs() - t0);
-    running = false;
+  function curP() { return players[active]; }
+
+  function updateUI() {
+    whoEl.textContent = players[active].name;
+    t1El.textContent = formatMsTenths(getElapsedMs(players[0]));
+    t2El.textContent = formatMsTenths(getElapsedMs(players[1]));
+
+    const p = curP();
+    const item = p.items[p.idx] || {letra:"?",respuesta:"",definicion:""};
+    curLetterEl.textContent = item.letra ?? "—";
+    curAnsEl.textContent = item.respuesta?.trim() ? item.respuesta : "—";
+    curDefEl.textContent = item.definicion?.trim() ? item.definicion : "—";
   }
 
-  function getElapsedMs() {
-    return running ? elapsed + (nowMs() - t0) : elapsed;
-  }
-
-  function nextIndex() {
-    // Avanza circularmente al siguiente que no esté resuelto (verde/rojo)
-    for (let k = 1; k <= LETTERS.length; k++) {
-      const j = (idx + k) % LETTERS.length;
-      if (state[j] !== 2 && state[j] !== 3) {
-        idx = j;
-        updateUI();
-        return;
-      }
+  // ====== Navegación ======
+  function nextUnresolved(p) {
+    const n = p.items.length;
+    for (let k=1; k<=n; k++) {
+      const j = (p.idx + k) % n;
+      if (p.state[j] !== 2 && p.state[j] !== 3) { p.idx = j; return; }
     }
-    // si todos resueltos, queda donde está
-    updateUI();
   }
+  function forceNext(p) { p.idx = (p.idx + 1) % p.items.length; }
+  function forcePrev(p) { p.idx = (p.idx - 1 + p.items.length) % p.items.length; }
 
-  // ====== Game actions ======
-  btnStart.onclick = () => startTimer();
-  btnPause.onclick = () => pauseTimer();
+  // ====== Acciones ======
+  btnStart.onclick = () => startTimer(curP());
+  btnPause.onclick = () => pauseTimer(curP());
 
   btnPass.onclick = () => {
-    // marca como pasada si estaba pendiente
-    if (state[idx] === 0) state[idx] = 1;
-    pauseTimer();          // como pediste: al pasapalabra se pausa
-    nextIndex();
+    const p = curP();
+    if (p.state[p.idx] === 0) p.state[p.idx] = 1;
+    pauseTimer(p);
+    nextUnresolved(p);
+    updateUI();
   };
-
   btnOk.onclick = () => {
-    state[idx] = 2;
-    nextIndex();
+    const p = curP();
+    p.state[p.idx] = 2;
+    nextUnresolved(p);
+    updateUI();
   };
-
   btnBad.onclick = () => {
-    state[idx] = 3;
-    nextIndex();
+    const p = curP();
+    p.state[p.idx] = 3;
+    nextUnresolved(p);
+    updateUI();
   };
 
-  // ====== Camera ======
+  btnNext.onclick = () => { forceNext(curP()); updateUI(); };
+  btnPrev.onclick = () => { forcePrev(curP()); updateUI(); };
+
+  function setActive(i) {
+    if (i === active) return;
+    pauseTimer(curP());
+    active = i;
+    updateUI();
+  }
+  btnP1.onclick = () => setActive(0);
+  btnP2.onclick = () => setActive(1);
+
+  // Swipe en canvas
+  let touchX0 = null;
+  canvas.addEventListener("touchstart", (e) => {
+    if (!e.touches?.length) return;
+    touchX0 = e.touches[0].clientX;
+  }, { passive:true });
+
+  canvas.addEventListener("touchend", (e) => {
+    if (touchX0 === null) return;
+    const x1 = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : null;
+    if (x1 === null) { touchX0 = null; return; }
+    const dx = x1 - touchX0;
+    touchX0 = null;
+    if (Math.abs(dx) < 50) return;
+    if (dx < 0) setActive(1); else setActive(0);
+  }, { passive:true });
+
+  // ====== Cámara ======
   async function initCam() {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" } },
-      audio: true // si querés sin audio, ponelo false
+      audio: true
     });
     video.srcObject = stream;
     await video.play();
@@ -168,93 +293,7 @@
     canvas.height = h;
   }
 
-  // ====== Drawing (video + rosco) ======
-  function drawRosco(cx, cy, radius) {
-    const n = LETTERS.length;
-    const angle0 = -Math.PI / 2; // empieza arriba
-
-    for (let i = 0; i < n; i++) {
-      const a = angle0 + i * (2 * Math.PI / n);
-      const x = cx + Math.cos(a) * radius;
-      const y = cy + Math.sin(a) * radius;
-
-      const r = Math.max(18, radius * 0.11); // tamaño de burbuja relativo
-
-      // burbuja
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = COLORS[state[i]];
-      ctx.globalAlpha = (i === idx) ? 1.0 : 0.85;
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-
-      // borde para la actual
-      if (i === idx) {
-        ctx.lineWidth = Math.max(4, r * 0.18);
-        ctx.strokeStyle = "white";
-        ctx.stroke();
-      }
-
-      // letra
-      ctx.fillStyle = "black";
-      ctx.font = `bold ${Math.floor(r*1.1)}px system-ui, Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(LETTERS[i], x, y);
-    }
-  }
-
-  function drawHUD() {
-    const pad = Math.round(canvas.width * 0.03);
-    const boxW = Math.round(canvas.width * 0.94);
-    const boxH = Math.round(canvas.height * 0.18);
-    const x = pad, y = canvas.height - boxH - pad;
-
-    // fondo semitransparente
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    roundRect(ctx, x, y, boxW, boxH, 18);
-    ctx.fill();
-
-    // textos
-    ctx.fillStyle = "white";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-
-    const letter = defs[idx].letra;
-    const def = defs[idx].definicion;
-
-    ctx.font = `bold ${Math.floor(canvas.height*0.035)}px system-ui, Arial`;
-    ctx.fillText(`Letra: ${letter}`, x + pad, y + pad);
-
-    const ms = getElapsedMs();
-    ctx.textAlign = "right";
-    ctx.fillText(`Tiempo: ${formatMs(ms)}`, x + boxW - pad, y + pad);
-
-    ctx.textAlign = "left";
-    ctx.font = `${Math.floor(canvas.height*0.03)}px system-ui, Arial`;
-    wrapText(def, x + pad, y + pad + Math.floor(canvas.height*0.05), boxW - pad*2, Math.floor(canvas.height*0.035));
-  }
-
-  function drawLoop() {
-    if (video.readyState >= 2) {
-      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-        resizeCanvasToVideo();
-      }
-      // video frame
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // rosco centrado
-      const cx = canvas.width * 0.5;
-      const cy = canvas.height * 0.42;
-      const radius = Math.min(canvas.width, canvas.height) * 0.28;
-      drawRosco(cx, cy, radius);
-
-      // HUD
-      drawHUD();
-    }
-    requestAnimationFrame(drawLoop);
-  }
-
+  // ====== Dibujo ======
   function roundRect(ctx, x, y, w, h, r) {
     const rr = Math.min(r, w/2, h/2);
     ctx.beginPath();
@@ -266,37 +305,177 @@
     ctx.closePath();
   }
 
-  function wrapText(text, x, y, maxWidth, lineHeight) {
-    const words = text.split(" ");
-    let line = "";
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n] + " ";
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && n > 0) {
-        ctx.fillText(line, x, y);
-        line = words[n] + " ";
-        y += lineHeight;
-      } else {
-        line = testLine;
+  function drawRosco(p) {
+    const n = p.items.length;
+    const cx = canvas.width * 0.5;
+    const cy = canvas.height * 0.45;
+    const ringR = Math.min(canvas.width, canvas.height) * 0.34;
+    const bubbleR = Math.max(14, Math.min(canvas.width, canvas.height) * 0.028);
+    const angle0 = -Math.PI / 2;
+
+    for (let i=0; i<n; i++) {
+      const a = angle0 + i * (2*Math.PI/n);
+      const x = cx + Math.cos(a) * ringR;
+      const y = cy + Math.sin(a) * ringR;
+
+      ctx.beginPath();
+      ctx.arc(x, y, bubbleR, 0, 2*Math.PI);
+      ctx.fillStyle = COLORS[p.state[i] ?? 0];
+      ctx.globalAlpha = (i === p.idx) ? 1.0 : 0.85;
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+
+      if (i === p.idx) {
+        ctx.lineWidth = Math.max(3, bubbleR * 0.22);
+        ctx.strokeStyle = "white";
+        ctx.stroke();
       }
+
+      const letter = (p.items[i].letra ?? "?").toString();
+      ctx.fillStyle = "#0b0b0c";
+      ctx.font = `900 ${Math.floor(bubbleR*1.15)}px system-ui, Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(letter, x, y);
     }
-    ctx.fillText(line, x, y);
   }
 
-  function formatMs(ms) {
-    const total = Math.floor(ms/1000);
-    const m = Math.floor(total/60);
-    const s = total % 60;
-    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  function drawTopBadges(p) {
+    const pad = Math.round(canvas.width * 0.02);
+
+    // título jugador
+    const title = p.name;
+    ctx.font = `900 ${Math.floor(canvas.height*0.04)}px system-ui, Arial`;
+    const tw = ctx.measureText(title).width;
+    const bx = pad, by = pad;
+    const bw = tw + pad*2, bh = Math.floor(canvas.height*0.07);
+
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    roundRect(ctx, bx, by, bw, bh, 16); ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(title, bx + pad, by + bh/2);
+
+    // letra actual en esquina
+    const letter = (p.items[p.idx]?.letra ?? "?").toString();
+    const lw = Math.floor(canvas.height*0.10);
+    const lh = lw;
+    const lx = canvas.width - pad - lw;
+    const ly = pad;
+
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    roundRect(ctx, lx, ly, lw, lh, 18); ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.font = `950 ${Math.floor(canvas.height*0.06)}px system-ui, Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(letter, lx + lw/2, ly + lh/2);
+
+    // timer con décimas
+    const timeText = formatMsTenths(getElapsedMs(p));
+    ctx.font = `800 ${Math.floor(canvas.height*0.034)}px system-ui, Arial`;
+    const tw2 = ctx.measureText(timeText).width;
+    const bx2 = pad, by2 = by + bh + Math.round(pad*0.7);
+    const bw2 = tw2 + pad*2, bh2 = Math.floor(canvas.height*0.06);
+
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    roundRect(ctx, bx2, by2, bw2, bh2, 16); ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(timeText, bx2 + pad, by2 + bh2/2);
   }
 
-  // ====== Recording (single video) ======
+  function drawLoop() {
+    if (video.readyState >= 2) {
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) resizeCanvasToVideo();
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const p = curP();
+      drawRosco(p);
+      drawTopBadges(p);
+      updateUI();
+    }
+    requestAnimationFrame(drawLoop);
+  }
+
+  // ====== Importación con normalización a ROSCO (Ñ incluida) ======
+  function parseListText(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const raw = [];
+
+    for (const line of lines) {
+      let parts;
+      if (line.includes("\t")) parts = line.split("\t");
+      else parts = line.split(",");
+
+      const letra = (parts[0] ?? "").trim().toUpperCase();
+      const respuesta = (parts[1] ?? "").trim();
+      const definicion = parts.slice(2).join(line.includes("\t") ? "\t" : ",").trim();
+      if (!letra) continue;
+      raw.push({ letra, respuesta, definicion });
+    }
+    return raw;
+  }
+
+  function normalizeToRosco(rawItems) {
+    // Mapeamos por letra (A..Z y Ñ). Si hay repetidas, la última gana.
+    const map = new Map();
+    for (const it of rawItems) {
+      const L = it.letra;
+      if (!ROSCO.includes(L)) continue;
+      map.set(L, { letra:L, respuesta: it.respuesta ?? "", definicion: it.definicion ?? "" });
+    }
+    // Construimos exactamente 27 entradas, en el orden del rosco
+    return ROSCO.map(L => map.get(L) ?? { letra:L, respuesta:"", definicion:"" });
+  }
+
+  function loadPlayerFromText(pi, text) {
+    const raw = parseListText(text);
+    if (!raw.length) { alert("No pude leer la lista. Revisá el formato."); return; }
+    players[pi].items = normalizeToRosco(raw);
+    resetStates(players[pi]);
+    updateUI();
+  }
+
+  btnLoad1.onclick = () => loadPlayerFromText(0, ta1.value);
+  btnLoad2.onclick = () => loadPlayerFromText(1, ta2.value);
+
+  btnDemo1.onclick = () => {
+    ta1.value = [
+      "A,ALFA,Primera letra del alfabeto griego",
+      "B,BETA,Segunda letra del alfabeto griego",
+      "N,NU,Letra griega (ν)",
+      "Ñ,ÑANDÚ,Ave corredora sudamericana",
+      "Z,ZETA,Letra griega (ζ)"
+    ].join("\n");
+  };
+  btnDemo2.onclick = () => {
+    ta2.value = [
+      "A,AMOR,Sentimiento que no suele aparecer en planillas de Excel",
+      "C,CAFÉ,Combustible moral del trabajador moderno",
+      "Ñ,ÑOQUIS,Comida a base de papa (plural popular)",
+      "S,SIESTA,Deporte nacional no oficial",
+      "Z,ZAPALLO,Ingrediente versátil"
+    ].join("\n");
+  };
+
+  async function readFileIntoTextarea(fileInput, textarea) {
+    const f = fileInput.files?.[0];
+    if (!f) return;
+    const text = await f.text();
+    textarea.value = text;
+  }
+  file1.addEventListener("change", () => readFileIntoTextarea(file1, ta1));
+  file2.addEventListener("change", () => readFileIntoTextarea(file2, ta2));
+
+  // ====== Grabación (single video) ======
   let recorder = null;
   let chunks = [];
   let downloadURL = null;
 
   function pickMimeType() {
-    // Android Chrome suele soportar webm/vp8; probamos opciones
     const candidates = [
       "video/webm;codecs=vp9,opus",
       "video/webm;codecs=vp8,opus",
@@ -310,19 +489,14 @@
     if (downloadURL) { URL.revokeObjectURL(downloadURL); downloadURL = null; }
 
     const stream = canvas.captureStream(30);
-
-    // Si querés audio: tomamos el audio track del stream de cámara y lo agregamos
     const camStream = video.srcObject;
-    const audioTracks = camStream ? camStream.getAudioTracks() : [];
-    audioTracks.forEach(t => stream.addTrack(t));
+    if (camStream) camStream.getAudioTracks().forEach(t => stream.addTrack(t));
 
     const mimeType = pickMimeType();
     recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
 
     chunks = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunks.push(e.data);
-    };
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
     recorder.onstop = () => {
       const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
       downloadURL = URL.createObjectURL(blob);
@@ -333,7 +507,7 @@
       btnRec.disabled = false;
     };
 
-    recorder.start(500); // timeslice para ir generando chunks
+    recorder.start(500);
     btnRec.disabled = true;
     btnStopRec.disabled = false;
   };
@@ -345,7 +519,7 @@
   // ====== Init ======
   updateUI();
   initCam().catch(err => {
-    alert("No pude acceder a la cámara. Recordá: tiene que ser HTTPS o localhost.\n\n" + err);
+    alert("No pude acceder a cámara/mic. Recordá: HTTPS o localhost.\n\n" + err);
     console.error(err);
   });
 })();
