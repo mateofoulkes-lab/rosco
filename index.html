@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>El Rosco App</title>
+  <style>
+    :root{
+      --bg0:#0b0c10;
+      --card: rgba(20,22,30,.72);
+      --stroke: rgba(255,255,255,.10);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.68);
+    }
+
+    *{ box-sizing:border-box; }
+    html, body { height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1000px 700px at 50% 0%, #18213a 0%, var(--bg0) 55%, #07070a 100%);
+      color: var(--text);
+      overflow-x:hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wrap{
+      width:100vw;
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 10px 10px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .stage{
+      width:100%;
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid var(--stroke);
+      background: #000;
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+
+    canvas{ display:block; width:100%; height:auto; }
+    video{ display:none; }
+
+    .card{
+      width:100%;
+      border-radius: 18px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--card) 0%, rgba(10,11,16,.72) 100%);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 26px rgba(0,0,0,.35);
+      padding: 10px;
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:nowrap;
+      width:100%;
+      min-width:0;
+    }
+
+    .left, .center, .right{ display:flex; align-items:center; gap:10px; min-width:0; }
+    .center{ justify-content:center; flex:1; }
+    .right{ justify-content:flex-end; }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 0 12px;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-weight: 850;
+      letter-spacing: .2px;
+      max-width: 60vw;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pill.small{
+      height: 44px;
+      padding: 0 10px;
+      font-weight: 800;
+      opacity: .95;
+      background: rgba(255,255,255,.07);
+    }
+
+    .label{
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing:.2px;
+      margin-right: 6px;
+      flex: 0 0 auto;
+    }
+
+    .value{
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing:.2px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 58vw;
+    }
+
+    /* ===== Botones: altura uniforme ===== */
+    button{
+      height: 48px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
+      padding: 0 14px;
+      border-radius: 14px;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      color: var(--text);
+      font-weight: 950;
+      letter-spacing: .2px;
+      cursor:pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+      user-select:none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      min-width: 0;
+    }
+    button:hover{
+      background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.08));
+    }
+    button:active{ transform: translateY(1px); }
+    button:focus, button:focus-visible{ outline:none; box-shadow:none; }
+    button:disabled{ opacity:.45; cursor:not-allowed; }
+
+    .btn-green{
+      background: linear-gradient(180deg, rgba(35,197,94,.96), rgba(18,140,63,.96));
+      border-color: rgba(255,255,255,.14);
+      color: #061a0e;
+      text-shadow: 0 1px 0 rgba(255,255,255,.22);
+    }
+    .btn-red{
+      background: linear-gradient(180deg, rgba(239,68,68,.96), rgba(170,33,33,.96));
+      border-color: rgba(255,255,255,.14);
+      color: #220606;
+      text-shadow: 0 1px 0 rgba(255,255,255,.18);
+    }
+    .btn-yellow{
+      background: linear-gradient(180deg, rgba(255,204,51,.98), rgba(196,144,16,.98));
+      border-color: rgba(255,255,255,.14);
+      color: #241a04;
+      text-shadow: 0 1px 0 rgba(255,255,255,.18);
+    }
+    .btn-ghost{ background: rgba(255,255,255,.07); }
+
+    .defBox{
+      margin-top: 10px;
+      border-radius: 16px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.22));
+      padding: 10px 12px;
+      max-height: 110px;
+      overflow:hidden;
+    }
+    .defTitle{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: .25px;
+      margin-bottom: 6px;
+    }
+    .defText{
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 800;
+      color: rgba(255,255,255,.90);
+      display:-webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow:hidden;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      align-items:center;
+      margin-top: 8px;
+    }
+    .actions button{
+      height: 52px; /* igual para los 3 */
+      flex: 1;
+      max-width: 240px;
+    }
+
+    .subactions{
+      margin-top: 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .subactions .left, .subactions .center{ flex: 1; min-width: 0; }
+    .subactions .center{ justify-content:center; display:flex; }
+    .subactions .right{ flex: 0 0 auto; display:flex; justify-content:flex-end; }
+
+    #btnEnd{
+      min-width: 150px;
+      white-space: nowrap;
+    }
+
+    /* NAV LETRA más chico */
+    .nav{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding: 0 6px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      height: 48px;
+    }
+    .nav span{
+      font-weight: 950;
+      letter-spacing: .35px;
+      font-size: 12px;
+      opacity: .92;
+      padding: 0 2px;
+    }
+    .nav button{
+      height: 40px;
+      width: 44px;
+      padding: 0;
+      border-radius: 12px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .hint{
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.25;
+      margin-top: 8px;
+    }
+
+    /* ===== Modales ===== */
+    .modal{
+      position: fixed;
+      inset: 0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 14px;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+    }
+    .modal.open{ display:flex; }
+    .modalCard{
+      width: min(780px, 100%);
+      max-height: min(86vh, 900px);
+      overflow:auto;
+      border-radius: 18px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(20,22,30,.92), rgba(10,11,16,.92));
+      box-shadow: 0 16px 50px rgba(0,0,0,.55);
+      padding: 12px;
+    }
+    .modalHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 10px;
+    }
+    .modalHeader h3{ margin:0; font-size: 16px; letter-spacing:.2px; }
+
+    input[type="text"]{
+      width:100%;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      padding: 12px 12px;
+      outline:none;
+      font-weight: 800;
+    }
+
+    select, input[type="file"]{
+      width:100%;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      padding: 10px 10px;
+      outline:none;
+      font-weight: 800;
+    }
+
+    .gridWords{
+      display:grid;
+      grid-template-columns: 48px 1fr 1fr;
+      gap: 8px;
+      align-items:center;
+      margin-top: 10px;
+    }
+    .gridWords .hdr{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: .25px;
+      padding: 2px 0 6px;
+    }
+    .letterCell{
+      font-weight: 950;
+      text-align:center;
+      border-radius: 12px;
+      padding: 10px 0;
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--stroke);
+    }
+
+    .modalFooter{
+      margin-top: 12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <video id="cam" playsinline muted></video>
+      <canvas id="out"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="left">
+          <button class="pill" id="btnPlayerName" title="Cambiar nombre">
+            <span id="playerNameText">Jugador 1</span>
+          </button>
+          <button class="pill small btn-ghost" id="btnTogglePlayer" title="Cambiar jugador">
+            ⇄ cambiar jugador
+          </button>
+        </div>
+
+        <div class="right" style="min-width: 0;">
+          <div class="pill" style="max-width: 55vw;">
+            <span class="label">RESPUESTA:</span>
+            <span class="value" id="uiAnswer">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="defBox">
+        <div class="defTitle">DEFINICIÓN</div>
+        <div class="defText" id="uiDef">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="actions">
+        <button class="btn-green" id="btnOk">✔ CORRECTO</button>
+        <button class="btn-red" id="btnBad">✖ INCORRECTO</button>
+        <button class="btn-yellow" id="btnPass">◯ PASAPALABRA</button>
+      </div>
+
+      <div class="subactions">
+        <div class="left">
+          <button id="btnGame" class="btn-ghost">JUEGO NUEVO</button>
+        </div>
+
+        <div class="center">
+          <button id="btnEnd" class="btn-ghost">FIN DEL JUEGO</button>
+        </div>
+
+        <div class="right">
+          <div class="nav">
+            <button id="btnPrev" class="btn-ghost" aria-label="Letra anterior">◀</button>
+            <span>LETRA</span>
+            <button id="btnNext" class="btn-ghost" aria-label="Letra siguiente">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="subactions" style="margin-top: 12px;">
+        <div class="left">
+          <button id="btnWordList" class="btn-ghost">LISTA DE PALABRAS</button>
+        </div>
+        <div class="center"></div>
+        <div class="right">
+          <button id="btnDownload" class="btn-ghost" disabled>GUARDAR VIDEO</button>
+        </div>
+      </div>
+
+      <div class="hint">
+        Swipe ←/→ sobre el video cambia de jugador. “Juego nuevo” inicia grabación. “Fin del juego” habilita Guardar video.
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal nombre -->
+  <div class="modal" id="modalName">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <h3>Cambiar nombre del jugador</h3>
+        <button id="btnCloseName" class="btn-ghost">Cerrar</button>
+      </div>
+      <input id="nameInput" type="text" />
+      <div class="modalFooter">
+        <button id="btnSaveName" class="btn-green">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal palabras -->
+  <div class="modal" id="modalWords">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <h3>Lista de palabras</h3>
+        <button id="btnCloseWords" class="btn-ghost">Cerrar</button>
+      </div>
+
+      <select id="selSaved">
+        <option value="">Listas guardadas (próximamente)</option>
+      </select>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+        <div>
+          <input id="fileImport" type="file" accept=".csv,.tsv,.txt" />
+          <div class="hint" style="margin-top:6px;">CSV o TSV. TSV recomendado si la definición tiene comas.</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+          <button id="btnExport" class="btn-ghost" style="width:100%;">Guardar lista (exportar)</button>
+        </div>
+      </div>
+
+      <div class="gridWords" id="wordsGrid" style="margin-top:10px;">
+        <div class="hdr">Letra</div>
+        <div class="hdr">Respuesta</div>
+        <div class="hdr">Definición</div>
+      </div>
+
+      <div class="modalFooter">
+        <button id="btnAssign1" class="btn-ghost">Asignar a Jugador 1</button>
+        <button id="btnAssign2" class="btn-ghost">Asignar a Jugador 2</button>
+        <button id="btnCloseWords2" class="btn-ghost">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // Si algo vuelve a romperse, lo ves en pantalla (Android suele “morir en silencio”)
+  window.onerror = (msg, src, line, col) => {
+    alert(`Error: ${msg}\n${src}:${line}:${col}`);
+  };
+
+  const ROSCO = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","Ñ","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+  const STATE_COLORS = ["#2b77ff", "#ffcc33", "#23c55e", "#ef4444"];
+
+  function makeDefaultItems() { return ROSCO.map(l => ({ letra:l, respuesta:"", definicion:"" })); }
+  const players = [
+    { name:"Jugador 1", items: makeDefaultItems(), idx:0, state:[], running:false, t0:0, elapsed:0 },
+    { name:"Jugador 2", items: makeDefaultItems(), idx:0, state:[], running:false, t0:0, elapsed:0 },
+  ];
+  function resetStates(p){ p.state = new Array(p.items.length).fill(0); p.idx=0; p.running=false; p.t0=0; p.elapsed=0; }
+  resetStates(players[0]); resetStates(players[1]);
+
+  let active = 0;
+  let gameStarted = false;
+
+  // DOM
+  const video = document.getElementById("cam");
+  const canvas = document.getElementById("out");
+  const ctx = canvas.getContext("2d");
+
+  const playerNameText = document.getElementById("playerNameText");
+  const uiAnswer = document.getElementById("uiAnswer");
+  const uiDef = document.getElementById("uiDef");
+
+  const btnPlayerName = document.getElementById("btnPlayerName");
+  const btnTogglePlayer = document.getElementById("btnTogglePlayer");
+  const btnOk = document.getElementById("btnOk");
+  const btnBad = document.getElementById("btnBad");
+  const btnPass = document.getElementById("btnPass");
+  const btnGame = document.getElementById("btnGame");
+  const btnEnd = document.getElementById("btnEnd");
+  const btnPrev = document.getElementById("btnPrev");
+  const btnNext = document.getElementById("btnNext");
+  const btnWordList = document.getElementById("btnWordList");
+  const btnDownload = document.getElementById("btnDownload");
+
+  // Modales (✅ acá estaba el bug: faltaban referencias)
+  const modalName = document.getElementById("modalName");
+  const btnCloseName = document.getElementById("btnCloseName");
+  const nameInput = document.getElementById("nameInput");
+  const btnSaveName = document.getElementById("btnSaveName");
+
+  const modalWords = document.getElementById("modalWords");
+  const selSaved = document.getElementById("selSaved");
+  const btnCloseWords = document.getElementById("btnCloseWords");
+  const btnCloseWords2 = document.getElementById("btnCloseWords2");
+  const fileImport = document.getElementById("fileImport");
+  const btnExport = document.getElementById("btnExport");
+  const btnAssign1 = document.getElementById("btnAssign1");
+  const btnAssign2 = document.getElementById("btnAssign2");
+  const wordsGrid = document.getElementById("wordsGrid");
+
+  // No dejar “focus gris”
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (b) b.blur();
+  });
+
+  // Helpers
+  function curP(){ return players[active]; }
+  function nowMs(){ return performance.now(); }
+  function startTimer(p){ if(p.running) return; p.running=true; p.t0=nowMs(); }
+  function pauseTimer(p){ if(!p.running) return; p.elapsed += (nowMs()-p.t0); p.running=false; }
+  function getElapsedMs(p){ return p.running ? p.elapsed + (nowMs()-p.t0) : p.elapsed; }
+  function formatMsTenths(ms){
+    const totalTenths = Math.floor(ms/100);
+    const tenths = totalTenths % 10;
+    const totalSeconds = Math.floor(totalTenths/10);
+    const s = totalSeconds % 60;
+    const m = Math.floor(totalSeconds/60);
+    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${tenths}`;
+  }
+
+  function updateTopUI(){
+    const p = curP();
+    playerNameText.textContent = p.name;
+    const item = p.items[p.idx] || {letra:"?",respuesta:"",definicion:""};
+    uiAnswer.textContent = item.respuesta?.trim() ? item.respuesta : "—";
+    uiDef.textContent = item.definicion?.trim() ? item.definicion : "—";
+  }
+
+  function updateGameButtonLabel(){
+    if(!gameStarted){ btnGame.textContent = "JUEGO NUEVO"; return; }
+    btnGame.textContent = curP().running ? "PAUSAR" : "REANUDAR";
+  }
+
+  function setActive(i){
+    if(i===active) return;
+    pauseTimer(curP());
+    active=i;
+    updateTopUI();
+    updateGameButtonLabel();
+  }
+  function togglePlayer(){ setActive(active===0 ? 1 : 0); }
+
+  function nextUnresolved(p){
+    const n = p.items.length;
+    for(let k=1;k<=n;k++){
+      const j=(p.idx+k)%n;
+      if(p.state[j]!==2 && p.state[j]!==3){ p.idx=j; return; }
+    }
+  }
+  function forceNext(p){ p.idx=(p.idx+1)%p.items.length; }
+  function forcePrev(p){ p.idx=(p.idx-1+p.items.length)%p.items.length; }
+
+  // Logo
+  const logoImg = new Image();
+  let logoReady = false;
+  logoImg.onload = () => { logoReady = true; };
+  logoImg.onerror = () => { logoReady = false; };
+  logoImg.src = "logo.png";
+
+  // Audio mix (mic + sfx) para grabación
+  let audioCtx=null, mixDest=null, monitorGain=null, micSource=null;
+  let sfxBuffers={ok:null,bad:null,pass:null};
+  let audioReady=false;
+
+  async function ensureAudio(){
+    if(audioReady) return true;
+    try{
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      await audioCtx.resume();
+      mixDest = audioCtx.createMediaStreamDestination();
+
+      monitorGain = audioCtx.createGain();
+      monitorGain.gain.value = 0.9;
+      monitorGain.connect(audioCtx.destination);
+
+      async function loadBuf(url){
+        const res = await fetch(url);
+        const arr = await res.arrayBuffer();
+        return await audioCtx.decodeAudioData(arr);
+      }
+      try{ sfxBuffers.ok = await loadBuf("sfx_ok.mp3"); }catch(_){}
+      try{ sfxBuffers.bad = await loadBuf("sfx_bad.mp3"); }catch(_){}
+      try{ sfxBuffers.pass = await loadBuf("sfx_pass.mp3"); }catch(_){}
+
+      audioReady=true;
+      return true;
+    }catch(err){
+      console.warn("Audio no disponible:", err);
+      return false;
+    }
+  }
+
+  function attachMicToMix(camStream){
+    try{
+      if(!audioCtx || !mixDest) return;
+      const at = camStream?.getAudioTracks?.()[0];
+      if(!at) return;
+
+      const micStream = new MediaStream([at]);
+      micSource = audioCtx.createMediaStreamSource(micStream);
+
+      micSource.connect(mixDest);
+
+      const micGain = audioCtx.createGain();
+      micGain.gain.value = 0.10;
+      micSource.connect(micGain);
+      micGain.connect(monitorGain);
+    }catch(err){
+      console.warn("No pude conectar mic al mix:", err);
+    }
+  }
+
+  function playSfx(which){
+    if(!audioReady || !audioCtx || !mixDest) return;
+    const buf = sfxBuffers[which];
+    if(!buf) return;
+
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.95;
+
+    src.connect(g);
+    g.connect(mixDest);
+    g.connect(monitorGain);
+
+    src.start(0);
+  }
+
+  // Grabación
+  let recorder=null, chunks=[], downloadURL=null;
+
+  function pickMimeType(){
+    const c = ["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+    return c.find(t => MediaRecorder.isTypeSupported(t)) || "";
+  }
+
+  function startRecording(){
+    if(recorder && recorder.state!=="inactive") return;
+
+    btnDownload.disabled = true;
+    if(downloadURL){ URL.revokeObjectURL(downloadURL); downloadURL=null; }
+
+    const stream = canvas.captureStream(30);
+    const mixedTrack = mixDest?.stream?.getAudioTracks?.()[0];
+    if(mixedTrack) stream.addTrack(mixedTrack);
+
+    const mimeType = pickMimeType();
+    recorder = new MediaRecorder(stream, mimeType ? {mimeType} : undefined);
+    chunks=[];
+
+    recorder.ondataavailable = (e) => { if(e.data && e.data.size>0) chunks.push(e.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, {type: recorder.mimeType || "video/webm"});
+      downloadURL = URL.createObjectURL(blob);
+      btnDownload.disabled = false;
+      btnDownload.onclick = () => {
+        const a = document.createElement("a");
+        a.href = downloadURL;
+        a.download = `rosco_${new Date().toISOString().replaceAll(":","-")}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      };
+    };
+
+    recorder.start(500);
+  }
+
+  function stopRecording(){
+    if(recorder && recorder.state!=="inactive") recorder.stop();
+  }
+
+  function newGame(){
+    resetStates(players[0]);
+    resetStates(players[1]);
+    gameStarted=true;
+    btnDownload.disabled=true;
+
+    active=0;
+    startTimer(curP());
+    updateTopUI();
+    updateGameButtonLabel();
+
+    startRecording();
+  }
+
+  function togglePausePlay(){
+    if(!gameStarted){ newGame(); return; }
+    const p = curP();
+    if(p.running) pauseTimer(p);
+    else startTimer(p);
+    updateGameButtonLabel();
+  }
+
+  function endGame(){
+    if(!gameStarted) return;
+    pauseTimer(players[0]);
+    pauseTimer(players[1]);
+    stopRecording();
+    gameStarted=false;
+    updateGameButtonLabel();
+  }
+
+  // Acciones
+  btnOk.onclick = () => {
+    playSfx("ok");
+    const p=curP();
+    p.state[p.idx]=2;
+    nextUnresolved(p);
+    updateTopUI();
+  };
+  btnBad.onclick = () => {
+    playSfx("bad");
+    const p=curP();
+    p.state[p.idx]=3;
+    nextUnresolved(p);
+    updateTopUI();
+  };
+  btnPass.onclick = () => {
+    playSfx("pass");
+    const p=curP();
+    if(p.state[p.idx]===0) p.state[p.idx]=1;
+    pauseTimer(p);
+    nextUnresolved(p);
+    updateTopUI();
+    updateGameButtonLabel();
+  };
+
+  btnGame.onclick = async () => { await ensureAudio(); togglePausePlay(); };
+  btnEnd.onclick = () => endGame();
+  btnPrev.onclick = () => { forcePrev(curP()); updateTopUI(); };
+  btnNext.onclick = () => { forceNext(curP()); updateTopUI(); };
+  btnTogglePlayer.onclick = () => { togglePlayer(); updateTopUI(); updateGameButtonLabel(); };
+
+  // Swipe jugador
+  let touchX0=null;
+  canvas.addEventListener("touchstart", (e) => {
+    if(!e.touches?.length) return;
+    touchX0 = e.touches[0].clientX;
+  }, {passive:true});
+  canvas.addEventListener("touchend", (e) => {
+    if(touchX0===null) return;
+    const x1 = e.changedTouches?.[0]?.clientX;
+    if(x1==null){ touchX0=null; return; }
+    const dx = x1-touchX0;
+    touchX0=null;
+    if(Math.abs(dx)<50) return;
+    togglePlayer();
+    updateTopUI();
+    updateGameButtonLabel();
+  }, {passive:true});
+
+  // Modal nombre
+  btnPlayerName.onclick = () => {
+    nameInput.value = curP().name;
+    modalName.classList.add("open");
+    setTimeout(()=>nameInput.focus(),50);
+  };
+  btnCloseName.onclick = () => modalName.classList.remove("open");
+  btnSaveName.onclick = () => {
+    const val=(nameInput.value||"").trim();
+    if(val) curP().name=val;
+    modalName.classList.remove("open");
+    updateTopUI();
+  };
+  modalName.addEventListener("click",(e)=>{ if(e.target===modalName) modalName.classList.remove("open"); });
+
+  // Modal palabras
+  btnWordList.onclick = () => openWordsModal();
+  btnCloseWords.onclick = () => modalWords.classList.remove("open");
+  btnCloseWords2.onclick = () => modalWords.classList.remove("open");
+  modalWords.addEventListener("click",(e)=>{ if(e.target===modalWords) modalWords.classList.remove("open"); });
+
+  function clearWordGridRows(){
+    const kids = Array.from(wordsGrid.children);
+    kids.slice(3).forEach(el=>el.remove());
+  }
+
+  function fillWordsFormFromItems(items){
+    clearWordGridRows();
+    const map = new Map(items.map(it=>[it.letra,it]));
+    for(const L of ROSCO){
+      const it = map.get(L) || {letra:L,respuesta:"",definicion:""};
+      const cL=document.createElement("div"); cL.className="letterCell"; cL.textContent=L;
+
+      const inResp=document.createElement("input");
+      inResp.type="text"; inResp.value=it.respuesta||""; inResp.dataset.letter=L; inResp.dataset.kind="respuesta";
+
+      const inDef=document.createElement("input");
+      inDef.type="text"; inDef.value=it.definicion||""; inDef.dataset.letter=L; inDef.dataset.kind="definicion";
+
+      wordsGrid.appendChild(cL); wordsGrid.appendChild(inResp); wordsGrid.appendChild(inDef);
+    }
+  }
+
+  function readWordsFormToItems(){
+    const inputs = wordsGrid.querySelectorAll("input[data-letter]");
+    const map = new Map(ROSCO.map(L=>[L,{letra:L,respuesta:"",definicion:""}]));
+    inputs.forEach(inp=>{
+      const it = map.get(inp.dataset.letter);
+      if(it) it[inp.dataset.kind] = inp.value || "";
+    });
+    return ROSCO.map(L=>map.get(L));
+  }
+
+  function openWordsModal(){
+    modalWords.classList.add("open");
+    fillWordsFormFromItems(curP().items);
+  }
+
+  function parseListText(text){
+    const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    const raw=[];
+    for(const line of lines){
+      if(/^letra\s*,\s*respuesta\s*,\s*definicion/i.test(line)) continue;
+      const parts = line.includes("\t") ? line.split("\t") : line.split(",");
+      const letra=(parts[0]??"").trim().toUpperCase();
+      const respuesta=(parts[1]??"").trim();
+      const definicion=parts.slice(2).join(line.includes("\t") ? "\t" : ",").trim();
+      if(!letra) continue;
+      raw.push({letra,respuesta,definicion});
+    }
+    return raw;
+  }
+
+  function normalizeToRosco(rawItems){
+    const map=new Map();
+    for(const it of rawItems){
+      const L=(it.letra||"").toUpperCase();
+      if(!ROSCO.includes(L)) continue;
+      map.set(L,{letra:L,respuesta:it.respuesta??"",definicion:it.definicion??""});
+    }
+    return ROSCO.map(L=>map.get(L) ?? {letra:L,respuesta:"",definicion:""});
+  }
+
+  function itemsToCSV(items){
+    const esc = (s) => {
+      const v=(s??"").toString();
+      if(/[",\n]/.test(v)) return `"${v.replaceAll('"','""')}"`;
+      return v;
+    };
+    const lines=["letra,respuesta,definicion"];
+    items.forEach(it=>lines.push([esc(it.letra),esc(it.respuesta),esc(it.definicion)].join(",")));
+    return lines.join("\n");
+  }
+
+  fileImport.addEventListener("change", async ()=>{
+    const f=fileImport.files?.[0];
+    if(!f) return;
+    const text=await f.text();
+    fillWordsFormFromItems(normalizeToRosco(parseListText(text)));
+    fileImport.value="";
+  });
+
+  btnExport.onclick = ()=>{
+    const csv=itemsToCSV(readWordsFormToItems());
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=`lista_rosco_${new Date().toISOString().slice(0,19).replaceAll(":","-")}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  };
+
+  btnAssign1.onclick = ()=>{ players[0].items=readWordsFormToItems(); updateTopUI(); modalWords.classList.remove("open"); };
+  btnAssign2.onclick = ()=>{ players[1].items=readWordsFormToItems(); updateTopUI(); modalWords.classList.remove("open"); };
+
+  // Dibujo
+  function roundRect(ctx,x,y,w,h,r){
+    const rr=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr,y);
+    ctx.arcTo(x+w,y,x+w,y+h,rr);
+    ctx.arcTo(x+w,y+h,x,y+h,rr);
+    ctx.arcTo(x,y+h,x,y,rr);
+    ctx.arcTo(x,y,x+w,y,rr);
+    ctx.closePath();
+  }
+  function shadeColor(hex,amt){
+    const c=hex.replace("#","");
+    const r=Math.max(0,Math.min(255,parseInt(c.substring(0,2),16)+amt));
+    const g=Math.max(0,Math.min(255,parseInt(c.substring(2,4),16)+amt));
+    const b=Math.max(0,Math.min(255,parseInt(c.substring(4,6),16)+amt));
+    return `rgb(${r},${g},${b})`;
+  }
+  function bubbleGradient(x,y,r,base){
+    const g=ctx.createRadialGradient(x-r*0.35,y-r*0.35,r*0.2,x,y,r);
+    g.addColorStop(0,shadeColor(base,+70));
+    g.addColorStop(0.55,base);
+    g.addColorStop(1,shadeColor(base,-85));
+    return g;
+  }
+
+  function drawRosco(p){
+    const n=p.items.length;
+    const cx=canvas.width*0.5;
+    const cy=canvas.height*0.46;
+    const ringR=Math.min(canvas.width,canvas.height)*0.365;
+    const bubbleR=Math.max(14,Math.min(canvas.width,canvas.height)*0.030);
+    const angle0=-Math.PI/2;
+
+    ctx.save();
+    ctx.globalAlpha=0.25;
+    ctx.strokeStyle="rgba(255,255,255,.25)";
+    ctx.lineWidth=bubbleR*0.25;
+    ctx.beginPath();
+    ctx.arc(cx,cy,ringR,0,Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+
+    for(let i=0;i<n;i++){
+      const a=angle0+i*(2*Math.PI/n);
+      const x=cx+Math.cos(a)*ringR;
+      const y=cy+Math.sin(a)*ringR;
+      const base=STATE_COLORS[p.state[i] ?? 0];
+
+      ctx.save();
+      ctx.shadowColor="rgba(0,0,0,.55)";
+      ctx.shadowBlur=bubbleR*0.55;
+      ctx.shadowOffsetY=bubbleR*0.12;
+
+      ctx.beginPath();
+      ctx.arc(x,y,bubbleR,0,Math.PI*2);
+      ctx.fillStyle=bubbleGradient(x,y,bubbleR,base);
+      ctx.globalAlpha=(i===p.idx)?1.0:0.92;
+      ctx.fill();
+
+      ctx.shadowBlur=0;
+      ctx.lineWidth=(i===p.idx)?Math.max(3,bubbleR*0.22):Math.max(1.5,bubbleR*0.10);
+      ctx.strokeStyle=(i===p.idx)?"rgba(255,255,255,.92)":"rgba(255,255,255,.28)";
+      ctx.stroke();
+
+      ctx.globalAlpha=0.35;
+      ctx.beginPath();
+      ctx.arc(x-bubbleR*0.30,y-bubbleR*0.30,bubbleR*0.35,0,Math.PI*2);
+      ctx.fillStyle="white";
+      ctx.fill();
+      ctx.restore();
+
+      const letter=(p.items[i].letra ?? "?").toString();
+      ctx.fillStyle="rgba(10,12,18,.95)";
+      ctx.font=`950 ${Math.floor(bubbleR*1.12)}px system-ui, Arial`;
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(letter,x,y+1);
+    }
+  }
+
+  function drawBadges(p){
+    const pad=Math.round(canvas.width*0.02);
+
+    const title=p.name;
+    ctx.font=`900 ${Math.floor(canvas.height*0.038)}px system-ui, Arial`;
+    const tw=ctx.measureText(title).width;
+    const bw=tw+pad*2;
+    const bh=Math.floor(canvas.height*0.07);
+    const bx=pad, by=pad;
+
+    ctx.fillStyle="rgba(0,0,0,0.52)";
+    roundRect(ctx,bx,by,bw,bh,16); ctx.fill();
+    ctx.fillStyle="white";
+    ctx.textAlign="left";
+    ctx.textBaseline="middle";
+    ctx.fillText(title,bx+pad,by+bh/2);
+
+    const t=formatMsTenths(getElapsedMs(p));
+    ctx.font=`850 ${Math.floor(canvas.height*0.032)}px ui-monospace, Menlo, monospace`;
+    const tw2=ctx.measureText(t).width;
+    const bw2=tw2+pad*2;
+    const bh2=Math.floor(canvas.height*0.06);
+    const by2=by+bh+Math.round(pad*0.7);
+
+    ctx.fillStyle="rgba(0,0,0,0.52)";
+    roundRect(ctx,bx,by2,bw2,bh2,16); ctx.fill();
+    ctx.fillStyle="white";
+    ctx.fillText(t,bx+pad,by2+bh2/2);
+
+    const L=(p.items[p.idx]?.letra ?? "?").toString();
+    const lw=Math.floor(canvas.height*0.10);
+    const lh=lw;
+    const lx=canvas.width-pad-lw;
+    const ly=pad;
+
+    ctx.fillStyle="rgba(0,0,0,0.52)";
+    roundRect(ctx,lx,ly,lw,lh,18); ctx.fill();
+    ctx.fillStyle="white";
+    ctx.font=`950 ${Math.floor(canvas.height*0.058)}px system-ui, Arial`;
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(L,lx+lw/2,ly+lh/2);
+
+    if(logoReady){
+      const size=Math.floor(canvas.height*0.16);
+      const margin=Math.floor(canvas.width*0.02);
+      const x=canvas.width-margin-size;
+      const y=canvas.height-margin-size;
+      ctx.save();
+      ctx.globalAlpha=0.98;
+      ctx.shadowColor="rgba(0,0,0,.55)";
+      ctx.shadowBlur=size*0.18;
+      ctx.drawImage(logoImg,x,y,size,size);
+      ctx.restore();
+    }
+  }
+
+  function drawVignette(){
+    const g=ctx.createRadialGradient(
+      canvas.width*0.5, canvas.height*0.35, Math.min(canvas.width,canvas.height)*0.15,
+      canvas.width*0.5, canvas.height*0.5, Math.max(canvas.width,canvas.height)*0.75
+    );
+    g.addColorStop(0,"rgba(0,0,0,0)");
+    g.addColorStop(1,"rgba(0,0,0,0.33)");
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  function resizeCanvasToVideo(){
+    const w=video.videoWidth || 1280;
+    const h=video.videoHeight || 720;
+    canvas.width=w;
+    canvas.height=h;
+  }
+
+  function drawLoop(){
+    if(video.readyState >= 2){
+      if(canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) resizeCanvasToVideo();
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      const p=curP();
+      drawRosco(p);
+      drawBadges(p);
+      drawVignette();
+      updateTopUI();
+      updateGameButtonLabel();
+    }
+    requestAnimationFrame(drawLoop);
+  }
+
+  // Cámara init
+  async function initCam(){
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: true
+    });
+    video.srcObject = stream;
+    await video.play();
+    resizeCanvasToVideo();
+
+    // Audio: intentamos inicializar (si el navegador lo bloquea, igual seguimos)
+    await ensureAudio();
+    attachMicToMix(stream);
+
+    requestAnimationFrame(drawLoop);
+  }
+
+  // init UI
+  updateTopUI();
+  updateGameButtonLabel();
+
+  initCam().catch(err => {
+    alert("No pude acceder a cámara/mic. Recordá: HTTPS o localhost.\n\n" + err);
+    console.error(err);
+  });
+})();
+</script>
+</body>
+</html>
