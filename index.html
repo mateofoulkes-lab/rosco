@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rosco AR (MVP)</title>
+  <style>
+    body { margin:0; font-family: system-ui, Arial; background:#111; color:#eee; }
+    .wrap { display:flex; flex-direction:column; gap:10px; padding:10px; }
+    .stage { position:relative; width:100%; max-width:720px; margin:auto; }
+    video, canvas { width:100%; height:auto; border-radius:14px; background:#000; }
+    .panel { max-width:720px; margin:auto; display:grid; gap:8px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; }
+    button { padding:10px 12px; border-radius:12px; border:0; background:#2a2a2a; color:#eee; font-weight:600; }
+    button:disabled { opacity:0.5; }
+    .info { background:#1b1b1b; border-radius:12px; padding:10px; }
+    .download a { color:#7cc0ff; word-break:break-all; }
+    .small { opacity:.85; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <video id="cam" playsinline muted></video>
+      <canvas id="out"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="info">
+        <div><b>Letra actual:</b> <span id="curLetter">A</span></div>
+        <div><b>Definición:</b> <span id="curDef">Ejemplo de definición para A.</span></div>
+        <div class="small">Tip: El overlay se dibuja en el canvas. El video grabado sale del canvas (incluye el rosco).</div>
+      </div>
+
+      <div class="row">
+        <button id="btnStart">Iniciar</button>
+        <button id="btnPause">Pausar</button>
+        <button id="btnPass">Pasapalabra</button>
+        <button id="btnOk">Correcto</button>
+        <button id="btnBad">Incorrecto</button>
+      </div>
+
+      <div class="row">
+        <button id="btnRec">Grabar</button>
+        <button id="btnStopRec" disabled>Detener</button>
+      </div>
+
+      <div class="info download" id="downloadBox" style="display:none;">
+        <div><b>Video listo:</b></div>
+        <a id="downloadLink" href="#" download="rosco.webm">Descargar</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ====== Config ======
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""); // MVP sin Ñ
+  // estados: 0=pendiente (azul), 1=pasada (amarillo), 2=correcta (verde), 3=incorrecta (rojo)
+  const COLORS = ["#2b77ff", "#ffcc33", "#23c55e", "#ef4444"];
+
+  // Ejemplo de definiciones (reemplazá por tu lista)
+  const defs = LETTERS.map(l => ({ letra: l, respuesta: "", definicion: `Ejemplo de definición para ${l}.` }));
+
+  let idx = 0;
+  const state = new Array(LETTERS.length).fill(0);
+
+  // Cronómetro simple (local)
+  let running = false;
+  let t0 = 0;
+  let elapsed = 0; // ms acumulados
+
+  // ====== DOM ======
+  const video = document.getElementById("cam");
+  const canvas = document.getElementById("out");
+  const ctx = canvas.getContext("2d");
+
+  const curLetterEl = document.getElementById("curLetter");
+  const curDefEl = document.getElementById("curDef");
+
+  const btnStart = document.getElementById("btnStart");
+  const btnPause = document.getElementById("btnPause");
+  const btnPass = document.getElementById("btnPass");
+  const btnOk = document.getElementById("btnOk");
+  const btnBad = document.getElementById("btnBad");
+
+  const btnRec = document.getElementById("btnRec");
+  const btnStopRec = document.getElementById("btnStopRec");
+
+  const downloadBox = document.getElementById("downloadBox");
+  const downloadLink = document.getElementById("downloadLink");
+
+  // ====== Helpers ======
+  function updateUI() {
+    curLetterEl.textContent = defs[idx].letra;
+    curDefEl.textContent = defs[idx].definicion;
+  }
+
+  function nowMs() { return performance.now(); }
+
+  function startTimer() {
+    if (running) return;
+    running = true;
+    t0 = nowMs();
+  }
+
+  function pauseTimer() {
+    if (!running) return;
+    elapsed += (nowMs() - t0);
+    running = false;
+  }
+
+  function getElapsedMs() {
+    return running ? elapsed + (nowMs() - t0) : elapsed;
+  }
+
+  function nextIndex() {
+    // Avanza circularmente al siguiente que no esté resuelto (verde/rojo)
+    for (let k = 1; k <= LETTERS.length; k++) {
+      const j = (idx + k) % LETTERS.length;
+      if (state[j] !== 2 && state[j] !== 3) {
+        idx = j;
+        updateUI();
+        return;
+      }
+    }
+    // si todos resueltos, queda donde está
+    updateUI();
+  }
+
+  // ====== Game actions ======
+  btnStart.onclick = () => startTimer();
+  btnPause.onclick = () => pauseTimer();
+
+  btnPass.onclick = () => {
+    // marca como pasada si estaba pendiente
+    if (state[idx] === 0) state[idx] = 1;
+    pauseTimer();          // como pediste: al pasapalabra se pausa
+    nextIndex();
+  };
+
+  btnOk.onclick = () => {
+    state[idx] = 2;
+    nextIndex();
+  };
+
+  btnBad.onclick = () => {
+    state[idx] = 3;
+    nextIndex();
+  };
+
+  // ====== Camera ======
+  async function initCam() {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: true // si querés sin audio, ponelo false
+    });
+    video.srcObject = stream;
+    await video.play();
+    resizeCanvasToVideo();
+    requestAnimationFrame(drawLoop);
+  }
+
+  function resizeCanvasToVideo() {
+    const w = video.videoWidth || 1280;
+    const h = video.videoHeight || 720;
+    canvas.width = w;
+    canvas.height = h;
+  }
+
+  // ====== Drawing (video + rosco) ======
+  function drawRosco(cx, cy, radius) {
+    const n = LETTERS.length;
+    const angle0 = -Math.PI / 2; // empieza arriba
+
+    for (let i = 0; i < n; i++) {
+      const a = angle0 + i * (2 * Math.PI / n);
+      const x = cx + Math.cos(a) * radius;
+      const y = cy + Math.sin(a) * radius;
+
+      const r = Math.max(18, radius * 0.11); // tamaño de burbuja relativo
+
+      // burbuja
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = COLORS[state[i]];
+      ctx.globalAlpha = (i === idx) ? 1.0 : 0.85;
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+
+      // borde para la actual
+      if (i === idx) {
+        ctx.lineWidth = Math.max(4, r * 0.18);
+        ctx.strokeStyle = "white";
+        ctx.stroke();
+      }
+
+      // letra
+      ctx.fillStyle = "black";
+      ctx.font = `bold ${Math.floor(r*1.1)}px system-ui, Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(LETTERS[i], x, y);
+    }
+  }
+
+  function drawHUD() {
+    const pad = Math.round(canvas.width * 0.03);
+    const boxW = Math.round(canvas.width * 0.94);
+    const boxH = Math.round(canvas.height * 0.18);
+    const x = pad, y = canvas.height - boxH - pad;
+
+    // fondo semitransparente
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    roundRect(ctx, x, y, boxW, boxH, 18);
+    ctx.fill();
+
+    // textos
+    ctx.fillStyle = "white";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    const letter = defs[idx].letra;
+    const def = defs[idx].definicion;
+
+    ctx.font = `bold ${Math.floor(canvas.height*0.035)}px system-ui, Arial`;
+    ctx.fillText(`Letra: ${letter}`, x + pad, y + pad);
+
+    const ms = getElapsedMs();
+    ctx.textAlign = "right";
+    ctx.fillText(`Tiempo: ${formatMs(ms)}`, x + boxW - pad, y + pad);
+
+    ctx.textAlign = "left";
+    ctx.font = `${Math.floor(canvas.height*0.03)}px system-ui, Arial`;
+    wrapText(def, x + pad, y + pad + Math.floor(canvas.height*0.05), boxW - pad*2, Math.floor(canvas.height*0.035));
+  }
+
+  function drawLoop() {
+    if (video.readyState >= 2) {
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        resizeCanvasToVideo();
+      }
+      // video frame
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // rosco centrado
+      const cx = canvas.width * 0.5;
+      const cy = canvas.height * 0.42;
+      const radius = Math.min(canvas.width, canvas.height) * 0.28;
+      drawRosco(cx, cy, radius);
+
+      // HUD
+      drawHUD();
+    }
+    requestAnimationFrame(drawLoop);
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr, y);
+    ctx.arcTo(x+w, y, x+w, y+h, rr);
+    ctx.arcTo(x+w, y+h, x, y+h, rr);
+    ctx.arcTo(x, y+h, x, y, rr);
+    ctx.arcTo(x, y, x+w, y, rr);
+    ctx.closePath();
+  }
+
+  function wrapText(text, x, y, maxWidth, lineHeight) {
+    const words = text.split(" ");
+    let line = "";
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + " ";
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        ctx.fillText(line, x, y);
+        line = words[n] + " ";
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, y);
+  }
+
+  function formatMs(ms) {
+    const total = Math.floor(ms/1000);
+    const m = Math.floor(total/60);
+    const s = total % 60;
+    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  }
+
+  // ====== Recording (single video) ======
+  let recorder = null;
+  let chunks = [];
+  let downloadURL = null;
+
+  function pickMimeType() {
+    // Android Chrome suele soportar webm/vp8; probamos opciones
+    const candidates = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm"
+    ];
+    return candidates.find(t => MediaRecorder.isTypeSupported(t)) || "";
+  }
+
+  btnRec.onclick = () => {
+    downloadBox.style.display = "none";
+    if (downloadURL) { URL.revokeObjectURL(downloadURL); downloadURL = null; }
+
+    const stream = canvas.captureStream(30);
+
+    // Si querés audio: tomamos el audio track del stream de cámara y lo agregamos
+    const camStream = video.srcObject;
+    const audioTracks = camStream ? camStream.getAudioTracks() : [];
+    audioTracks.forEach(t => stream.addTrack(t));
+
+    const mimeType = pickMimeType();
+    recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+
+    chunks = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+      downloadURL = URL.createObjectURL(blob);
+      downloadLink.href = downloadURL;
+      downloadLink.download = `rosco_${new Date().toISOString().replaceAll(":","-")}.webm`;
+      downloadBox.style.display = "block";
+      btnStopRec.disabled = true;
+      btnRec.disabled = false;
+    };
+
+    recorder.start(500); // timeslice para ir generando chunks
+    btnRec.disabled = true;
+    btnStopRec.disabled = false;
+  };
+
+  btnStopRec.onclick = () => {
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+  };
+
+  // ====== Init ======
+  updateUI();
+  initCam().catch(err => {
+    alert("No pude acceder a la cámara. Recordá: tiene que ser HTTPS o localhost.\n\n" + err);
+    console.error(err);
+  });
+})();
+</script>
+</body>
+</html>
