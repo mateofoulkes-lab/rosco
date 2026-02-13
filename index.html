@@ -847,6 +847,26 @@
     });
   }
 
+  async function probeKnownCsvFiles(){
+    const candidates = [
+      ...Array.from({length:30}, (_v, i) => `rosco_set_${i+1}.csv`),
+      "rosco.csv",
+      "lista.csv"
+    ];
+
+    const checks = await Promise.all(candidates.map(async (name) => {
+      try{
+        const res = await fetch(name, {method:"HEAD", cache:"no-store"});
+        if(!res.ok) return null;
+        return {name, href:new URL(name, window.location.href).href};
+      }catch(_err){
+        return null;
+      }
+    }));
+
+    return checks.filter(Boolean);
+  }
+
   async function loadSavedCsvOptions(){
     try{
       const res = await fetch("./", {cache:"no-store"});
@@ -871,10 +891,20 @@
         .filter(Boolean)
         .sort((a,b)=>a.name.localeCompare(b.name,"es",{sensitivity:"base"}));
 
+      if(files.length===0){
+        const probed = await probeKnownCsvFiles();
+        files.push(...probed);
+      }
+
       setSavedListOptions(files);
     }catch(err){
       console.warn("No pude listar CSVs automáticamente:", err);
-      selSaved.innerHTML='<option value="">No se pudo listar .csv automáticamente</option>';
+      const files = await probeKnownCsvFiles();
+      if(files.length){
+        setSavedListOptions(files);
+      }else{
+        selSaved.innerHTML='<option value="">No se pudo listar .csv automáticamente</option>';
+      }
     }
   }
 
