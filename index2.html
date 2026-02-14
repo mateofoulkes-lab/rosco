@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>El Rosco App - Simple</title>
+  <style>
+    :root{
+      --bg0:#0b0c10;
+      --card: rgba(20,22,30,.72);
+      --stroke: rgba(255,255,255,.10);
+      --text: rgba(255,255,255,.92);
+    }
+    *{ box-sizing:border-box; }
+    html, body { height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1000px 700px at 50% 0%, #18213a 0%, var(--bg0) 55%, #07070a 100%);
+      color: var(--text);
+      overflow-x:hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wrap{
+      width:100vw;
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 10px 10px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .stage{
+      width:100%;
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid var(--stroke);
+      background: #000;
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+    canvas{ display:block; width:100%; height:auto; }
+    video{ display:none; }
+    .card{
+      width:100%;
+      border-radius: 18px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--card) 0%, rgba(10,11,16,.72) 100%);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 26px rgba(0,0,0,.35);
+      padding: 10px;
+    }
+    button{
+      height: 54px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
+      padding: 0 14px;
+      border-radius: 14px;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      color: var(--text);
+      font-weight: 950;
+      letter-spacing: .2px;
+      cursor:pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+      min-width: 0;
+      width: 100%;
+    }
+    button:disabled{ opacity:.45; cursor:not-allowed; }
+    .btn-green{ background: linear-gradient(180deg, rgba(35,197,94,.96), rgba(18,140,63,.96)); color:#061a0e; }
+    .btn-red{ background: linear-gradient(180deg, rgba(239,68,68,.96), rgba(170,33,33,.96)); color:#220606; }
+    .btn-yellow{ background: linear-gradient(180deg, rgba(255,204,51,.98), rgba(196,144,16,.98)); color:#241a04; }
+    .btn-ghost{ background: rgba(255,255,255,.07); }
+
+    .playerRow{
+      display:flex;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .pill{
+      height: 48px;
+      border-radius: 999px;
+      width:auto;
+      padding: 0 14px;
+      max-width: 62%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .pill.small{ max-width: 38%; }
+
+    .btnGrid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-rows: repeat(2, 1fr);
+      gap:10px;
+      width:100%;
+    }
+
+    .modal{
+      position: fixed;
+      inset: 0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 14px;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+    }
+    .modal.open{ display:flex; }
+    .modalCard{
+      width: min(560px, 100%);
+      border-radius: 18px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(20,22,30,.92), rgba(10,11,16,.92));
+      box-shadow: 0 16px 50px rgba(0,0,0,.55);
+      padding: 12px;
+    }
+    .modalHeader{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .modalHeader h3{ margin:0; font-size:16px; }
+    input[type="text"]{
+      width:100%;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      padding: 12px;
+      font-weight: 800;
+      margin-bottom:10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <video id="cam" playsinline muted></video>
+      <canvas id="out"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="playerRow">
+        <button class="pill" id="btnPlayerName" title="Cambiar nombre">
+          <span id="playerNameText">Jugador 1</span>
+        </button>
+        <button class="pill small btn-ghost" id="btnTogglePlayer" title="Cambiar jugador">⇄ cambiar jugador</button>
+      </div>
+
+      <div class="btnGrid">
+        <button class="btn-green" id="btnOk">✔ CORRECTO</button>
+        <button class="btn-red" id="btnBad">✖ INCORRECTO</button>
+        <button class="btn-yellow" id="btnPass">◯ PASAR</button>
+
+        <button id="btnGame" class="btn-ghost">INICIAR</button>
+        <button id="btnEnd" class="btn-ghost">FINALIZAR</button>
+        <button id="btnDownload" class="btn-ghost" disabled>GUARDAR VIDEO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalName">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <h3>Cambiar nombre del jugador</h3>
+        <button id="btnCloseName" class="btn-ghost" style="width:auto; padding:0 16px;">Cerrar</button>
+      </div>
+      <input id="nameInput" type="text" />
+      <button id="btnSaveName" class="btn-green">Guardar</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const ROSCO = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","Ñ","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+  const STATE_COLORS = ["#2b77ff", "#ffcc33", "#23c55e", "#ef4444"];
+
+  function makeDefaultItems() { return ROSCO.map(l => ({ letra:l, respuesta:"", definicion:"" })); }
+  const players = [
+    { name:"Jugador 1", items: makeDefaultItems(), idx:0, state:[], running:false, t0:0, elapsed:0 },
+    { name:"Jugador 2", items: makeDefaultItems(), idx:0, state:[], running:false, t0:0, elapsed:0 },
+  ];
+  function resetStates(p){ p.state = new Array(p.items.length).fill(0); p.idx=0; p.running=false; p.t0=0; p.elapsed=0; }
+  resetStates(players[0]); resetStates(players[1]);
+
+  let active = 0;
+  let gameStarted = false;
+
+  const video = document.getElementById("cam");
+  const canvas = document.getElementById("out");
+  const ctx = canvas.getContext("2d");
+
+  const playerNameText = document.getElementById("playerNameText");
+  const btnPlayerName = document.getElementById("btnPlayerName");
+  const btnTogglePlayer = document.getElementById("btnTogglePlayer");
+  const btnOk = document.getElementById("btnOk");
+  const btnBad = document.getElementById("btnBad");
+  const btnPass = document.getElementById("btnPass");
+  const btnGame = document.getElementById("btnGame");
+  const btnEnd = document.getElementById("btnEnd");
+  const btnDownload = document.getElementById("btnDownload");
+
+  const modalName = document.getElementById("modalName");
+  const btnCloseName = document.getElementById("btnCloseName");
+  const nameInput = document.getElementById("nameInput");
+  const btnSaveName = document.getElementById("btnSaveName");
+
+  function curP(){ return players[active]; }
+  function nowMs(){ return performance.now(); }
+  function startTimer(p){ if(p.running) return; p.running=true; p.t0=nowMs(); }
+  function pauseTimer(p){ if(!p.running) return; p.elapsed += (nowMs()-p.t0); p.running=false; }
+  function getElapsedMs(p){ return p.running ? p.elapsed + (nowMs()-p.t0) : p.elapsed; }
+  function formatMsTenths(ms){
+    const totalTenths = Math.floor(ms/100);
+    const tenths = totalTenths % 10;
+    const totalSeconds = Math.floor(totalTenths/10);
+    const s = totalSeconds % 60;
+    const m = Math.floor(totalSeconds/60);
+    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${tenths}`;
+  }
+
+  function updateTopUI(){ playerNameText.textContent = curP().name; }
+  function updateGameButtonLabel(){
+    if(!gameStarted){ btnGame.textContent = "INICIAR"; return; }
+    btnGame.textContent = curP().running ? "PAUSAR" : "REANUDAR";
+  }
+
+  function setActive(i){ if(i===active) return; pauseTimer(curP()); active=i; updateTopUI(); updateGameButtonLabel(); }
+  function togglePlayer(){ setActive(active===0 ? 1 : 0); }
+  function nextUnresolved(p){
+    const n = p.items.length;
+    for(let k=1;k<=n;k++){
+      const j=(p.idx+k)%n;
+      if(p.state[j]!==2 && p.state[j]!==3){ p.idx=j; return; }
+    }
+  }
+
+  const logoImg = new Image();
+  let logoReady = false;
+  logoImg.onload = () => { logoReady = true; };
+  logoImg.onerror = () => { logoReady = false; };
+  logoImg.src = "logo.png";
+
+  let audioCtx=null, mixDest=null, monitorGain=null, micSource=null;
+  let sfxBuffers={ok:null,bad:null,pass:null};
+  let audioReady=false;
+
+  async function ensureAudio(){
+    if(audioReady) return true;
+    try{
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      await audioCtx.resume();
+      mixDest = audioCtx.createMediaStreamDestination();
+      monitorGain = audioCtx.createGain();
+      monitorGain.gain.value = 0.9;
+      monitorGain.connect(audioCtx.destination);
+
+      async function loadBuf(url){
+        const res = await fetch(url);
+        const arr = await res.arrayBuffer();
+        return await audioCtx.decodeAudioData(arr);
+      }
+      try{ sfxBuffers.ok = await loadBuf("sfx_ok.mp3"); }catch(_){ }
+      try{ sfxBuffers.bad = await loadBuf("sfx_bad.mp3"); }catch(_){ }
+      try{ sfxBuffers.pass = await loadBuf("sfx_pass.mp3"); }catch(_){ }
+
+      audioReady=true;
+      return true;
+    }catch(_err){ return false; }
+  }
+
+  function attachMicToMix(camStream){
+    try{
+      if(!audioCtx || !mixDest) return;
+      const at = camStream?.getAudioTracks?.()[0];
+      if(!at) return;
+      const micStream = new MediaStream([at]);
+      micSource = audioCtx.createMediaStreamSource(micStream);
+      micSource.connect(mixDest);
+      const micGain = audioCtx.createGain();
+      micGain.gain.value = 0.10;
+      micSource.connect(micGain);
+      micGain.connect(monitorGain);
+    }catch(_err){ }
+  }
+
+  function playSfx(which){
+    if(!audioReady || !audioCtx || !mixDest) return;
+    const buf = sfxBuffers[which];
+    if(!buf) return;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.95;
+    src.connect(g); g.connect(mixDest); g.connect(monitorGain); src.start(0);
+  }
+
+  let recorder=null, chunks=[], downloadURL=null;
+  function pickMimeType(){
+    const c = ["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+    return c.find(t => MediaRecorder.isTypeSupported(t)) || "";
+  }
+
+  function startRecording(){
+    if(recorder && recorder.state!=="inactive") return;
+    btnDownload.disabled = true;
+    if(downloadURL){ URL.revokeObjectURL(downloadURL); downloadURL=null; }
+
+    const stream = canvas.captureStream(30);
+    const mixedTrack = mixDest?.stream?.getAudioTracks?.()[0];
+    if(mixedTrack) stream.addTrack(mixedTrack);
+
+    const mimeType = pickMimeType();
+    recorder = new MediaRecorder(stream, mimeType ? {mimeType} : undefined);
+    chunks=[];
+    recorder.ondataavailable = (e) => { if(e.data && e.data.size>0) chunks.push(e.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, {type: recorder.mimeType || "video/webm"});
+      downloadURL = URL.createObjectURL(blob);
+      btnDownload.disabled = false;
+      btnDownload.onclick = () => {
+        const a = document.createElement("a");
+        a.href = downloadURL;
+        a.download = `rosco_${new Date().toISOString().replaceAll(":","-")}.webm`;
+        document.body.appendChild(a); a.click(); a.remove();
+      };
+    };
+    recorder.start(500);
+  }
+
+  function stopRecording(){ if(recorder && recorder.state!=="inactive") recorder.stop(); }
+  function newGame(){
+    resetStates(players[0]); resetStates(players[1]); gameStarted=true; btnDownload.disabled=true;
+    active=0; startTimer(curP()); updateTopUI(); updateGameButtonLabel(); startRecording();
+  }
+  function togglePausePlay(){ if(!gameStarted){ newGame(); return; } const p = curP(); if(p.running) pauseTimer(p); else startTimer(p); updateGameButtonLabel(); }
+  function endGame(){ if(!gameStarted) return; pauseTimer(players[0]); pauseTimer(players[1]); stopRecording(); gameStarted=false; updateGameButtonLabel(); }
+
+  btnOk.onclick = () => { playSfx("ok"); const p=curP(); p.state[p.idx]=2; nextUnresolved(p); };
+  btnBad.onclick = () => { playSfx("bad"); const p=curP(); p.state[p.idx]=3; nextUnresolved(p); };
+  btnPass.onclick = () => { playSfx("pass"); const p=curP(); if(p.state[p.idx]===0) p.state[p.idx]=1; pauseTimer(p); nextUnresolved(p); updateGameButtonLabel(); };
+  btnGame.onclick = async () => { await ensureAudio(); togglePausePlay(); };
+  btnEnd.onclick = () => endGame();
+  btnTogglePlayer.onclick = () => { togglePlayer(); updateTopUI(); updateGameButtonLabel(); };
+
+  btnPlayerName.onclick = () => { nameInput.value = curP().name; modalName.classList.add("open"); setTimeout(()=>nameInput.focus(),50); };
+  btnCloseName.onclick = () => modalName.classList.remove("open");
+  btnSaveName.onclick = () => { const val=(nameInput.value||"").trim(); if(val) curP().name=val; modalName.classList.remove("open"); updateTopUI(); };
+  modalName.addEventListener("click",(e)=>{ if(e.target===modalName) modalName.classList.remove("open"); });
+
+  function roundRect(ctx,x,y,w,h,r){
+    const rr=Math.min(r,w/2,h/2);
+    ctx.beginPath(); ctx.moveTo(x+rr,y); ctx.arcTo(x+w,y,x+w,y+h,rr); ctx.arcTo(x+w,y+h,x,y+h,rr); ctx.arcTo(x,y+h,x,y,rr); ctx.arcTo(x,y,x+w,y,rr); ctx.closePath();
+  }
+  function shadeColor(hex,amt){
+    const c=hex.replace("#","");
+    const r=Math.max(0,Math.min(255,parseInt(c.substring(0,2),16)+amt));
+    const g=Math.max(0,Math.min(255,parseInt(c.substring(2,4),16)+amt));
+    const b=Math.max(0,Math.min(255,parseInt(c.substring(4,6),16)+amt));
+    return `rgb(${r},${g},${b})`;
+  }
+  function bubbleGradient(x,y,r,base){
+    const g=ctx.createRadialGradient(x-r*0.35,y-r*0.35,r*0.2,x,y,r);
+    g.addColorStop(0,shadeColor(base,+70)); g.addColorStop(0.55,base); g.addColorStop(1,shadeColor(base,-85));
+    return g;
+  }
+
+  function drawRosco(p){
+    const n=p.items.length;
+    const cx=canvas.width*0.5;
+    const cy=canvas.height*0.46;
+    const ringR=Math.min(canvas.width,canvas.height)*0.365;
+    const bubbleR=Math.max(14,Math.min(canvas.width,canvas.height)*0.030);
+    const angle0=-Math.PI/2;
+
+    ctx.save();
+    ctx.globalAlpha=0.25; ctx.strokeStyle="rgba(255,255,255,.25)"; ctx.lineWidth=bubbleR*0.25;
+    ctx.beginPath(); ctx.arc(cx,cy,ringR,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    for(let i=0;i<n;i++){
+      const a=angle0+i*(2*Math.PI/n);
+      const x=cx+Math.cos(a)*ringR;
+      const y=cy+Math.sin(a)*ringR;
+      const base=STATE_COLORS[p.state[i] ?? 0];
+
+      ctx.save();
+      ctx.shadowColor="rgba(0,0,0,.55)";
+      ctx.shadowBlur=bubbleR*0.55;
+      ctx.shadowOffsetY=bubbleR*0.12;
+
+      ctx.beginPath(); ctx.arc(x,y,bubbleR,0,Math.PI*2);
+      ctx.fillStyle=bubbleGradient(x,y,bubbleR,base);
+      ctx.globalAlpha=(i===p.idx)?1.0:0.92;
+      ctx.fill();
+
+      ctx.shadowBlur=0;
+      ctx.lineWidth=(i===p.idx)?Math.max(3,bubbleR*0.22):Math.max(1.5,bubbleR*0.10);
+      ctx.strokeStyle=(i===p.idx)?"rgba(255,255,255,.92)":"rgba(255,255,255,.28)";
+      ctx.stroke();
+
+      const letter=(p.items[i].letra ?? "?").toString();
+      ctx.fillStyle="rgba(10,12,18,.95)";
+      ctx.font=`950 ${Math.floor(bubbleR*1.12)}px system-ui, Arial`;
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(letter,x,y+1);
+      ctx.restore();
+    }
+  }
+
+  function drawBadges(p){
+    const pad=Math.round(canvas.width*0.02);
+    const title=p.name;
+    ctx.font=`900 ${Math.floor(canvas.height*0.038)}px system-ui, Arial`;
+    const tw=ctx.measureText(title).width;
+    const bw=tw+pad*2;
+    const bh=Math.floor(canvas.height*0.07);
+    const bx=pad, by=pad;
+
+    ctx.fillStyle="rgba(0,0,0,0.52)"; roundRect(ctx,bx,by,bw,bh,16); ctx.fill();
+    ctx.fillStyle="white"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(title,bx+pad,by+bh/2);
+
+    const t=formatMsTenths(getElapsedMs(p));
+    ctx.font=`850 ${Math.floor(canvas.height*0.032)}px ui-monospace, Menlo, monospace`;
+    const tw2=ctx.measureText(t).width;
+    const bw2=tw2+pad*2;
+    const bh2=Math.floor(canvas.height*0.06);
+    const by2=by+bh+Math.round(pad*0.7);
+
+    ctx.fillStyle="rgba(0,0,0,0.52)"; roundRect(ctx,bx,by2,bw2,bh2,16); ctx.fill();
+    ctx.fillStyle="white"; ctx.fillText(t,bx+pad,by2+bh2/2);
+
+    const L=(p.items[p.idx]?.letra ?? "?").toString();
+    const lw=Math.floor(canvas.height*0.10); const lx=canvas.width-pad-lw; const ly=pad;
+    ctx.fillStyle="rgba(0,0,0,0.52)"; roundRect(ctx,lx,ly,lw,lw,18); ctx.fill();
+    ctx.fillStyle="white"; ctx.font=`950 ${Math.floor(canvas.height*0.058)}px system-ui, Arial`; ctx.textAlign="center";
+    ctx.fillText(L,lx+lw/2,ly+lw/2);
+
+    if(logoReady){
+      const size=Math.floor(canvas.height*0.16); const margin=Math.floor(canvas.width*0.02); const x=canvas.width-margin-size; const y=canvas.height-margin-size;
+      ctx.save(); ctx.globalAlpha=0.98; ctx.shadowColor="rgba(0,0,0,.55)"; ctx.shadowBlur=size*0.18; ctx.drawImage(logoImg,x,y,size,size); ctx.restore();
+    }
+  }
+
+  function drawVignette(){
+    const g=ctx.createRadialGradient(canvas.width*0.5, canvas.height*0.35, Math.min(canvas.width,canvas.height)*0.15, canvas.width*0.5, canvas.height*0.5, Math.max(canvas.width,canvas.height)*0.75);
+    g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,0.33)");
+    ctx.fillStyle=g; ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  function resizeCanvasToVideo(){ const w=video.videoWidth || 1280; const h=video.videoHeight || 720; canvas.width=w; canvas.height=h; }
+  function drawLoop(){
+    if(video.readyState >= 2){
+      if(canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) resizeCanvasToVideo();
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      const p=curP(); drawRosco(p); drawBadges(p); drawVignette(); updateTopUI(); updateGameButtonLabel();
+    }
+    requestAnimationFrame(drawLoop);
+  }
+
+  async function initCam(){
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: true });
+    video.srcObject = stream;
+    await video.play();
+    resizeCanvasToVideo();
+    await ensureAudio();
+    attachMicToMix(stream);
+    requestAnimationFrame(drawLoop);
+  }
+
+  updateTopUI();
+  updateGameButtonLabel();
+  initCam().catch(err => { alert("No pude acceder a cámara/mic. Recordá: HTTPS o localhost.\n\n" + err); console.error(err); });
+})();
+</script>
+</body>
+</html>
